@@ -1,0 +1,72 @@
+{
+    "version": 1,
+    "author": "Nhom Do an 31",
+    "editor": "wokwi",
+    "parts": [
+        {
+            "type": "board-esp32-devkit-c-v4",
+            "id": "esp32",
+            "top": 0,
+            "left": 0,
+            "attrs": {}
+        },
+        {
+            "type": "wokwi-led",
+            "id": "statusLed",
+            "top": 20,
+            "left": 260,
+            "attrs": {
+                "color": "green",
+                "label": "STATUS"
+            }
+        },
+        {
+            "type": "wokwi-resistor",
+            "id": "statusResistor",
+            "top": 95,
+            "left": 265,
+            "rotate": 90,
+            "attrs": {
+                "value": "220"
+            }
+        }
+    ],
+    "connections": [
+        [
+            "esp32:TX0",
+            "$serialMonitor:RX",
+            "",
+            []
+        ],
+        [
+            "esp32:RX0",
+            "$serialMonitor:TX",
+            "",
+            []
+        ],
+        [
+            "esp32:2",
+            "statusLed:A",
+            "green",
+            []
+        ],
+        [
+            "statusLed:C",
+            "statusResistor:1",
+            "black",
+            []
+        ],
+        [
+            "statusResistor:2",
+            "esp32:GND.1",
+            "black",
+            []
+        ]
+    ],
+    "dependencies": {},
+    "serialMonitor": {
+        "display": "terminal",
+        "newline": "lf",
+        "convertEol": true
+    }
+}
