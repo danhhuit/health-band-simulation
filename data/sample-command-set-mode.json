@@ -1,0 +1,5 @@
+{
+  "requestId": "cmd-001",
+  "command": "setMode",
+  "value": "high_hr"
+}

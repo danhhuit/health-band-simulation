@@ -58,6 +58,15 @@ iot31/nhom-thanh-danh/health-band/command
 iot31/nhom-thanh-danh/health-band/alert
 ```
 
+Hợp đồng MQTT chính thức, gồm publisher/subscriber, QoS, retain, payload và ca kiểm thử, nằm tại [`node-red/mqtt-topics.md`](node-red/mqtt-topics.md).
+
+Payload và JSON Schema dùng chung:
+
+- [`data/sample-telemetry.json`](data/sample-telemetry.json) và [`data/telemetry.schema.json`](data/telemetry.schema.json).
+- [`data/sample-status-online.json`](data/sample-status-online.json), [`data/sample-status-offline.json`](data/sample-status-offline.json) và [`data/status.schema.json`](data/status.schema.json).
+- [`data/sample-command-set-mode.json`](data/sample-command-set-mode.json), [`data/sample-command-reset-steps.json`](data/sample-command-reset-steps.json) và [`data/command.schema.json`](data/command.schema.json).
+- [`data/sample-alert.json`](data/sample-alert.json) và [`data/alert.schema.json`](data/alert.schema.json).
+
 ## Mốc kỹ thuật đầu tiên
 
 Hoàn thành đường truyền tối thiểu:
@@ -75,4 +84,3 @@ Chỉ chuyển sang làm dashboard khi Node-RED nhận và phân tích đúng b�
 3. Làm một thay đổi nhỏ, kiểm tra và commit trên nhánh cá nhân.
 4. Push nhánh và nhờ người được phân công review.
 5. Chỉ merge vào `main` khi đã có bằng chứng chạy được.
-

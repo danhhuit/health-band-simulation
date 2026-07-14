@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Health Band Alert",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deviceId",
+    "type",
+    "severity",
+    "value",
+    "threshold",
+    "sourceSeq",
+    "timestamp",
+    "message"
+  ],
+  "properties": {
+    "deviceId": {
+      "type": "string",
+      "const": "health-band-01"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "HIGH_HEART_RATE",
+        "LOW_HEART_RATE",
+        "LOW_SPO2",
+        "FALL_DETECTED",
+        "LOW_BATTERY",
+        "DEVICE_OFFLINE",
+        "INVALID_PAYLOAD"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ]
+    },
+    "value": {
+      "type": [
+        "number",
+        "boolean",
+        "null"
+      ]
+    },
+    "threshold": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "sourceSeq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
