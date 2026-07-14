@@ -1,0 +1,28 @@
+# Hệ điều hành
+Thumbs.db
+.DS_Store
+
+# Trình soạn thảo
+.idea/
+.vscode/
+
+# Tệp tạm và nhật ký
+*.tmp
+*.temp
+*.log
+~$*.docx
+
+# Biến môi trường và bí mật
+.env
+.env.*
+secrets.h
+config.local.*
+
+# Node.js / Node-RED cục bộ
+node_modules/
+.node-red/
+node-red/flows_cred.json
+
+# Tệp xuất hoặc bản sao lưu cục bộ
+*.bak
+*.swp
