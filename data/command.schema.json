@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Health Band Command",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requestId",
+    "command"
+  ],
+  "properties": {
+    "requestId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "command": {
+      "type": "string",
+      "enum": [
+        "setMode",
+        "resetSteps"
+      ]
+    },
+    "value": {
+      "type": "string",
+      "enum": [
+        "normal",
+        "high_hr",
+        "low_hr",
+        "low_spo2",
+        "fall",
+        "low_battery"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "command": {
+          "const": "setMode"
+        }
+      },
+      "required": [
+        "value"
+      ]
+    },
+    {
+      "properties": {
+        "command": {
+          "const": "resetSteps"
+        }
+      },
+      "not": {
+        "required": [
+          "value"
+        ]
+      }
+    }
+  ]
+}

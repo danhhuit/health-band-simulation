@@ -1,0 +1,11 @@
+{
+  "deviceId": "health-band-01",
+  "timestamp": 15000,
+  "seq": 25,
+  "heartRate": 78,
+  "spo2": 98,
+  "steps": 125,
+  "fallDetected": false,
+  "battery": 92,
+  "signalQuality": "good"
+}
