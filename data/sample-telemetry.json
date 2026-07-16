@@ -1,11 +1,114 @@
-{
-  "deviceId": "health-band-01",
-  "timestamp": 15000,
-  "seq": 25,
-  "heartRate": 78,
-  "spo2": 98,
-  "steps": 125,
-  "fallDetected": false,
-  "battery": 92,
-  "signalQuality": "good"
-}
+[
+  {
+    "description": "TC01 - Ca bình thường (Normal resting state): Nhịp tim 75 BPM, SpO2 98%, Pin 95%, Tín hiệu tốt",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 12000,
+      "seq": 1,
+      "heartRate": 75,
+      "spo2": 98,
+      "steps": 120,
+      "fallDetected": false,
+      "battery": 95,
+      "signalQuality": "good"
+    }
+  },
+  {
+    "description": "TC02 - Ca bình thường khi đi bộ (Normal walking state): Nhịp tim 92 BPM, SpO2 97%, Số bước tăng lên 145",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 24000,
+      "seq": 2,
+      "heartRate": 92,
+      "spo2": 97,
+      "steps": 145,
+      "fallDetected": false,
+      "battery": 94,
+      "signalQuality": "good"
+    }
+  },
+  {
+    "description": "TC03 - Ca bất thường (Té ngã lập tức - Fall Detected): Nhấn nút FALL, fallDetected=true yêu cầu cảnh báo NGAY LẬP TỨC",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 36000,
+      "seq": 3,
+      "heartRate": 105,
+      "spo2": 96,
+      "steps": 146,
+      "fallDetected": true,
+      "battery": 94,
+      "signalQuality": "medium"
+    }
+  },
+  {
+    "description": "TC04 - Ca bất thường (Nhịp tim cao - Tachycardia > 120): Nhịp tim 135 BPM (cần 3 bản tin liên tiếp để kích hoạt cảnh báo demo)",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 48000,
+      "seq": 4,
+      "heartRate": 135,
+      "spo2": 95,
+      "steps": 210,
+      "fallDetected": false,
+      "battery": 88,
+      "signalQuality": "good"
+    }
+  },
+  {
+    "description": "TC05 - Ca bất thường (Nhịp tim thấp - Bradycardia < 50): Nhịp tim 46 BPM (cần 3 bản tin liên tiếp để kích hoạt cảnh báo)",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 60000,
+      "seq": 5,
+      "heartRate": 46,
+      "spo2": 96,
+      "steps": 210,
+      "fallDetected": false,
+      "battery": 87,
+      "signalQuality": "good"
+    }
+  },
+  {
+    "description": "TC06 - Ca bất thường (SpO2 thấp - Hypoxemia < 94%): SpO2 xuống 89% (cần 3 bản tin liên tiếp để kích hoạt cảnh báo)",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 72000,
+      "seq": 6,
+      "heartRate": 85,
+      "spo2": 89,
+      "steps": 215,
+      "fallDetected": false,
+      "battery": 85,
+      "signalQuality": "medium"
+    }
+  },
+  {
+    "description": "TC07 - Ca bất thường (Pin yếu <= 20%): Pin xuống 15%, phát cảnh báo sạc thiết bị",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 84000,
+      "seq": 7,
+      "heartRate": 78,
+      "spo2": 97,
+      "steps": 250,
+      "fallDetected": false,
+      "battery": 15,
+      "signalQuality": "good"
+    }
+  },
+  {
+    "description": "TC08 - Ca bất thường tổng hợp (Tình huống nguy cấp): Nhịp tim cao 145 BPM + SpO2 thấp 88% + Tín hiệu kém",
+    "payload": {
+      "deviceId": "health-band-01",
+      "timestamp": 96000,
+      "seq": 8,
+      "heartRate": 145,
+      "spo2": 88,
+      "steps": 250,
+      "fallDetected": false,
+      "battery": 14,
+      "signalQuality": "poor"
+    }
+  }
+]

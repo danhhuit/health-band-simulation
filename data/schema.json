@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HealthBandTelemetry",
+  "description": "Chuẩn dữ liệu JSON Telemetry cho mô phỏng Vòng tay sức khỏe IoT 4 tầng (Đồ án 31 - Nhánh Hồng Vỹ feature/vy-health-data)",
+  "type": "object",
+  "properties": {
+    "deviceId": {
+      "type": "string",
+      "description": "Mã định danh thiết bị ảo ESP32 trên Wokwi",
+      "pattern": "^health-band-[0-9]{2,}$",
+      "examples": ["health-band-01"]
+    },
+    "timestamp": {
+      "type": "integer",
+      "description": "Thời gian tính bằng mili giây (ms) kể từ khi ESP32 khởi động (millis())",
+      "minimum": 0
+    },
+    "seq": {
+      "type": "integer",
+      "description": "Số thứ tự bản tin gửi đi, tăng dần +1 sau mỗi lần publish để kiểm tra mất/lặp gói tin",
+      "minimum": 0
+    },
+    "heartRate": {
+      "type": "integer",
+      "description": "Nhịp tim mô phỏng (Beats Per Minute - BPM). Ngưỡng bình thường: 60-100, cao: > 120, thấp: < 50",
+      "minimum": 40,
+      "maximum": 200
+    },
+    "spo2": {
+      "type": "integer",
+      "description": "Nồng độ oxy trong máu mô phỏng (%). Ngưỡng bình thường: 95-100%, thấp: < 94%",
+      "minimum": 70,
+      "maximum": 100
+    },
+    "steps": {
+      "type": "integer",
+      "description": "Tổng số bước chân tích lũy từ lúc khởi động (tăng khi nhấn nút STEP trên Wokwi)",
+      "minimum": 0
+    },
+    "fallDetected": {
+      "type": "boolean",
+      "description": "Cờ phát hiện té ngã (true khi nút FALL được kích hoạt, yêu cầu cảnh báo ngay lập tức)"
+    },
+    "battery": {
+      "type": "integer",
+      "description": "Dung lượng pin mô phỏng còn lại (%). Ngưỡng pin yếu: <= 20%",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "signalQuality": {
+      "type": "string",
+      "description": "Chất lượng tín hiệu thu thập mô phỏng từ da",
+      "enum": ["good", "medium", "poor"]
+    }
+  },
+  "required": [
+    "deviceId",
+    "timestamp",
+    "seq",
+    "heartRate",
+    "spo2",
+    "steps",
+    "fallDetected",
+    "battery",
+    "signalQuality"
+  ],
+  "additionalProperties": false
+}
