@@ -1,0 +1,10 @@
+{
+  "deviceId": "health-band-01",
+  "type": "HIGH_HEART_RATE",
+  "severity": "warning",
+  "value": 128,
+  "threshold": 120,
+  "sourceSeq": 25,
+  "timestamp": 15000,
+  "message": "Nhịp tim vượt ngưỡng demo"
+}

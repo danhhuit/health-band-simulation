@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Health Band Telemetry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deviceId",
+    "timestamp",
+    "seq",
+    "heartRate",
+    "spo2",
+    "steps",
+    "fallDetected",
+    "battery",
+    "signalQuality"
+  ],
+  "properties": {
+    "deviceId": {
+      "type": "string",
+      "const": "health-band-01"
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "heartRate": {
+      "type": "integer",
+      "minimum": 40,
+      "maximum": 200
+    },
+    "spo2": {
+      "type": "integer",
+      "minimum": 70,
+      "maximum": 100
+    },
+    "steps": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "fallDetected": {
+      "type": "boolean"
+    },
+    "battery": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "signalQuality": {
+      "type": "string",
+      "enum": ["good", "medium", "poor"]
+    }
+  }
+}

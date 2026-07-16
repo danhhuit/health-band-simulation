@@ -26,3 +26,6 @@ node-red/flows_cred.json
 # Tệp xuất hoặc bản sao lưu cục bộ
 *.bak
 *.swp
+
+# PlatformIO build artifacts
+.pio/
