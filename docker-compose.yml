@@ -1,0 +1,10 @@
+﻿services:
+  node-red:
+    build:
+      context: ./node-red
+    container_name: health-band-node-red
+    ports:
+      - "1880:1880"
+    volumes:
+      - ./node-red/data:/data
+    restart: unless-stopped

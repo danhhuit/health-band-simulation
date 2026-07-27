@@ -7,5 +7,6 @@
   "steps": 125,
   "fallDetected": false,
   "battery": 92,
-  "signalQuality": "good"
+  "signalQuality": "good",
+  "mode": "normal"
 }

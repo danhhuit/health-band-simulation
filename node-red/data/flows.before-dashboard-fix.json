@@ -1,0 +1,1134 @@
+[
+    {
+        "id": "tab1",
+        "type": "tab",
+        "label": "HealthBand",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "95c15afb2ed777f8",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "e8ad27b17437698f",
+        "type": "tab",
+        "label": "HealthBand",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "broker1",
+        "type": "mqtt-broker",
+        "name": "EMQX",
+        "broker": "broker.emqx.io",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "autoUnsubscribe": true
+    },
+    {
+        "id": "base1",
+        "type": "ui-base",
+        "name": "HealthBand",
+        "path": "/dashboard",
+        "appIcon": "",
+        "includeClientData": true,
+        "acceptsClientConfig": [
+            "ui-notification",
+            "ui-control"
+        ],
+        "showPathInSidebar": false,
+        "navigationStyle": "default"
+    },
+    {
+        "id": "page1",
+        "type": "ui-page",
+        "name": "Tong quan",
+        "ui": "base1",
+        "path": "/overview",
+        "icon": "heart-pulse",
+        "layout": "grid",
+        "theme": "",
+        "order": 0,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "gVitals",
+        "type": "ui-group",
+        "name": "Chi so chinh",
+        "page": "page1",
+        "width": "12",
+        "order": 0,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "gChart",
+        "type": "ui-group",
+        "name": "Bieu do",
+        "page": "page1",
+        "width": "12",
+        "order": 1,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "gCtrl",
+        "type": "ui-group",
+        "name": "Dieu khien",
+        "page": "page1",
+        "width": "12",
+        "order": 2,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "gAlert",
+        "type": "ui-group",
+        "name": "Canh bao",
+        "page": "page1",
+        "width": "12",
+        "order": 3,
+        "showTitle": true,
+        "className": "",
+        "visible": "true",
+        "disabled": "false"
+    },
+    {
+        "id": "mqttIn",
+        "type": "mqtt in",
+        "z": "tab1",
+        "name": "",
+        "topic": "iot31/nhom-thanh-danh/health-band/telemetry",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "broker1",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 250,
+        "y": 100,
+        "wires": [
+            [
+                "json1"
+            ]
+        ]
+    },
+    {
+        "id": "json1",
+        "type": "function",
+        "z": "tab1",
+        "name": "Parse telemetry",
+        "func": "var p=msg.payload;try{if(Buffer.isBuffer(p))p=p.toString('utf8');for(var i=0;i<2&&typeof p==='string';i++)p=JSON.parse(p);if(!p||typeof p!=='object'||Array.isArray(p))throw new Error('Payload is not an object');msg.payload=p;return msg;}catch(e){node.warn('Telemetry JSON invalid: '+e.message,msg);return null;}",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 100,
+        "wires": [
+            [
+                "split1",
+                "alert1",
+                "ts1"
+            ]
+        ]
+    },
+    {
+        "id": "ts1",
+        "type": "function",
+        "z": "tab1",
+        "name": "TS",
+        "func": "global.set(\"lts\",Date.now());return null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 1,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "split1",
+        "type": "function",
+        "z": "tab1",
+        "name": "Split",
+        "func": "var d=msg.payload||{};var hr=Number(d.heartRate),sp=Number(d.spo2),bat=Number(d.battery),steps=Number(d.steps);if(!Number.isFinite(hr)||!Number.isFinite(sp)||!Number.isFinite(bat)||!Number.isFinite(steps)){node.warn('Telemetry missing numeric fields',msg);return null;}return[{payload:hr,topic:\"Nhip tim\"},{payload:sp,topic:\"SpO2\"},{payload:bat},{payload:steps},[{payload:hr,topic:\"Nhip tim\"},{payload:sp,topic:\"SpO2\"}],{payload:(d.fallDetected?\"PHAT HIEN NGA\":\"BINH THUONG\")+\" | Buoc: \"+steps+\" | Tin hieu: \"+(d.signalQuality||\"unknown\")}];",
+        "outputs": 6,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 120,
+        "wires": [
+            [
+                "gHr"
+            ],
+            [
+                "gSpo2"
+            ],
+            [
+                "gBat"
+            ],
+            [
+                "tSteps"
+            ],
+            [
+                "chart1"
+            ],
+            [
+                "tStatus"
+            ]
+        ]
+    },
+    {
+        "id": "gHr",
+        "type": "ui-gauge",
+        "z": "tab1",
+        "name": "Nhip tim",
+        "group": "gVitals",
+        "order": 0,
+        "width": 6,
+        "height": 4,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Nhip tim",
+        "units": "",
+        "segments": [
+            {
+                "from": 40,
+                "color": "red"
+            },
+            {
+                "from": 60,
+                "color": "yellow"
+            },
+            {
+                "from": 70,
+                "color": "green"
+            },
+            {
+                "from": 100,
+                "color": "green"
+            },
+            {
+                "from": 120,
+                "color": "yellow"
+            },
+            {
+                "from": 140,
+                "color": "red"
+            }
+        ],
+        "min": 40,
+        "max": 200,
+        "x": 880,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gSpo2",
+        "type": "ui-gauge",
+        "z": "tab1",
+        "name": "Spo2",
+        "group": "gVitals",
+        "order": 1,
+        "width": 6,
+        "height": 4,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "SpO2",
+        "units": "",
+        "segments": [
+            {
+                "from": 70,
+                "color": "red"
+            },
+            {
+                "from": 90,
+                "color": "yellow"
+            },
+            {
+                "from": 94,
+                "color": "green"
+            },
+            {
+                "from": 96,
+                "color": "green"
+            }
+        ],
+        "min": 70,
+        "max": 100,
+        "x": 880,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "gBat",
+        "type": "ui-gauge",
+        "z": "tab1",
+        "name": "Pin",
+        "group": "gVitals",
+        "order": 2,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-battery",
+        "gstyle": "needle",
+        "title": "Pin",
+        "units": "",
+        "segments": [
+            {
+                "from": 0,
+                "color": "red"
+            },
+            {
+                "from": 20,
+                "color": "yellow"
+            },
+            {
+                "from": 50,
+                "color": "green"
+            }
+        ],
+        "min": 0,
+        "max": 100,
+        "x": 870,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "tSteps",
+        "type": "ui-text",
+        "z": "tab1",
+        "group": "gVitals",
+        "order": 3,
+        "width": 3,
+        "height": 1,
+        "name": "Buoc",
+        "label": "Buoc chan",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "x": 870,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "tStatus",
+        "type": "ui-text",
+        "z": "tab1",
+        "group": "gVitals",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "name": "Status",
+        "label": "Trang thai",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "x": 880,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "chart1",
+        "type": "ui-chart",
+        "z": "tab1",
+        "group": "gChart",
+        "name": "Chart",
+        "label": "Nhip tim & SpO2",
+        "order": 0,
+        "chartType": "line",
+        "width": 12,
+        "height": 6,
+        "x": 880,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "alert1",
+        "type": "function",
+        "z": "tab1",
+        "name": "Alert",
+        "func": "var d=msg.payload||{};var a=[];var ac=global.get(\"ac\")||{};var n=Date.now();if(d.heartRate>120)a.push({deviceId:d.deviceId,type:\"HIGH_HEART_RATE\",severity:\"warning\",value:d.heartRate,threshold:120,sourceSeq:d.seq,timestamp:n,message:\"HR cao: \"+d.heartRate+\" BPM\"});if(d.heartRate<50)a.push({deviceId:d.deviceId,type:\"LOW_HEART_RATE\",severity:\"warning\",value:d.heartRate,threshold:50,sourceSeq:d.seq,timestamp:n,message:\"HR thap: \"+d.heartRate+\" BPM\"});if(d.spo2<94)a.push({deviceId:d.deviceId,type:\"LOW_SPO2\",severity:\"warning\",value:d.spo2,threshold:94,sourceSeq:d.seq,timestamp:n,message:\"SpO2 thap: \"+d.spo2+\"%\"});if(d.fallDetected===true)a.push({deviceId:d.deviceId,type:\"FALL_DETECTED\",severity:\"critical\",value:true,threshold:null,sourceSeq:d.seq,timestamp:n,message:\"PHAT HIEN NGA!\"});if(d.battery<=20)a.push({deviceId:d.deviceId,type:\"LOW_BATTERY\",severity:\"warning\",value:d.battery,threshold:20,sourceSeq:d.seq,timestamp:n,message:\"Pin yeu: \"+d.battery+\"%\"});var k=d.deviceId+\"_a\";var c=JSON.stringify(a.map(function(x){return x.type;}).sort());if(c===(ac[k]||\"\"))return null;ac[k]=c;global.set(\"ac\",ac);var m=a.map(function(x){return{x}});return[m.length?m:null];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 340,
+        "wires": [
+            [
+                "alertMqtt"
+            ]
+        ]
+    },
+    {
+        "id": "alertMqtt",
+        "type": "mqtt out",
+        "z": "tab1",
+        "name": "Alert",
+        "topic": "iot31/nhom-thanh-danh/health-band/alert",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "broker1",
+        "x": 870,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "injOff",
+        "type": "inject",
+        "z": "tab1",
+        "name": "Off",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 250,
+        "y": 400,
+        "wires": [
+            [
+                "offFunc"
+            ]
+        ]
+    },
+    {
+        "id": "offFunc",
+        "type": "function",
+        "z": "tab1",
+        "name": "Offline",
+        "func": "var g=Date.now()-(global.get(\"lts\")||0);if(g>8000&&global.get(\"ofs\")!==true){global.set(\"ofs\",true);var n=Date.now();return{payload:{deviceId:\"health-band-01\",type:\"DEVICE_OFFLINE\",severity:\"critical\",value:null,threshold:null,sourceSeq:0,timestamp:n,message:\"MAT KET NOI!\"}};}if(g<=8000&&global.get(\"ofs\")===true)global.set(\"ofs\",false);return null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 400,
+        "wires": [
+            [
+                "alertMqtt"
+            ]
+        ]
+    },
+    {
+        "id": "btnN",
+        "type": "ui-button",
+        "z": "tab1",
+        "group": "gCtrl",
+        "name": "Normal",
+        "label": "Binh thuong",
+        "order": 0,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-n\",\"command\":\"setMode\",\"value\":\"normal\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 480,
+        "wires": [
+            [
+                "cmdF"
+            ]
+        ]
+    },
+    {
+        "id": "btnH",
+        "type": "ui-button",
+        "z": "tab1",
+        "group": "gCtrl",
+        "name": "HighHR",
+        "label": "HR cao",
+        "order": 1,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-h\",\"command\":\"setMode\",\"value\":\"high_hr\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 520,
+        "wires": [
+            [
+                "cmdF"
+            ]
+        ]
+    },
+    {
+        "id": "btnL",
+        "type": "ui-button",
+        "z": "tab1",
+        "group": "gCtrl",
+        "name": "LowSpO2",
+        "label": "SpO2 thap",
+        "order": 2,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-s\",\"command\":\"setMode\",\"value\":\"low_spo2\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 560,
+        "wires": [
+            [
+                "cmdF"
+            ]
+        ]
+    },
+    {
+        "id": "btnF",
+        "type": "ui-button",
+        "z": "tab1",
+        "group": "gCtrl",
+        "name": "Fall",
+        "label": "Nga",
+        "order": 3,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-f\",\"command\":\"setMode\",\"value\":\"fall\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 600,
+        "wires": [
+            [
+                "cmdF"
+            ]
+        ]
+    },
+    {
+        "id": "btnB",
+        "type": "ui-button",
+        "z": "tab1",
+        "group": "gCtrl",
+        "name": "LowBat",
+        "label": "Pin yeu",
+        "order": 4,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-b\",\"command\":\"setMode\",\"value\":\"low_battery\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 640,
+        "wires": [
+            [
+                "cmdF"
+            ]
+        ]
+    },
+    {
+        "id": "btnR",
+        "type": "ui-button",
+        "z": "tab1",
+        "group": "gCtrl",
+        "name": "ResetSt",
+        "label": "Reset Steps",
+        "order": 5,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-r\",\"command\":\"resetSteps\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 680,
+        "wires": [
+            [
+                "cmdF"
+            ]
+        ]
+    },
+    {
+        "id": "cmdF",
+        "type": "function",
+        "z": "tab1",
+        "name": "Cmd",
+        "func": "return{payload:msg.payload,topic:\"iot31/nhom-thanh-danh/health-band/command\"};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 580,
+        "wires": [
+            [
+                "cmdM"
+            ]
+        ]
+    },
+    {
+        "id": "cmdM",
+        "type": "mqtt out",
+        "z": "tab1",
+        "name": "Cmd",
+        "topic": "iot31/nhom-thanh-danh/health-band/command",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "broker1",
+        "x": 710,
+        "y": 580,
+        "wires": []
+    },
+    {
+        "id": "2e114ea1c0b5ce5d",
+        "type": "mqtt in",
+        "z": "e8ad27b17437698f",
+        "name": "",
+        "topic": "iot31/nhom-thanh-danh/health-band/telemetry",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "broker1",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 250,
+        "y": 100,
+        "wires": [
+            [
+                "f1022a101cd3b202"
+            ]
+        ]
+    },
+    {
+        "id": "f1022a101cd3b202",
+        "type": "json",
+        "z": "e8ad27b17437698f",
+        "name": "",
+        "property": "payload",
+        "action": "",
+        "pretty": false,
+        "x": 450,
+        "y": 100,
+        "wires": [
+            [
+                "9f5faade961489d9",
+                "2a7b2e2f6509061e",
+                "13719bc1f69be2c6"
+            ]
+        ]
+    },
+    {
+        "id": "13719bc1f69be2c6",
+        "type": "function",
+        "z": "e8ad27b17437698f",
+        "name": "TS",
+        "func": "global.set(\"lts\",Date.now());return null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 1,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 60,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9f5faade961489d9",
+        "type": "function",
+        "z": "e8ad27b17437698f",
+        "name": "Split",
+        "func": "var d=msg.payload||{};return[{payload:d.heartRate,topic:\"HR\"},{payload:d.spo2,topic:\"SpO2\"},{payload:d.battery},{payload:d.steps},[{payload:d.heartRate,topic:\"HR\"},{payload:d.spo2,topic:\"SpO2\"}],{payload:(d.fallDetected?\"FALL\":\"OK\")+\" Stp:\"+d.steps+\" Sig:\"+d.signalQuality}];",
+        "outputs": 6,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 120,
+        "wires": [
+            [
+                "ef86bce1c94117e1"
+            ],
+            [
+                "795a62c2931d88e6"
+            ],
+            [
+                "7d61cb8a4f9ef2d0"
+            ],
+            [
+                "69f60d29a31e34f6"
+            ],
+            [
+                "eaae408a3ca8ae6a"
+            ],
+            [
+                "9307ec61b3be1fd3"
+            ]
+        ]
+    },
+    {
+        "id": "ef86bce1c94117e1",
+        "type": "ui-gauge",
+        "z": "e8ad27b17437698f",
+        "name": "Nhip tim",
+        "group": "gVitals",
+        "order": 0,
+        "width": 6,
+        "height": 4,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "Nhip tim",
+        "units": "",
+        "segments": [
+            {
+                "from": 40,
+                "color": "red"
+            },
+            {
+                "from": 60,
+                "color": "yellow"
+            },
+            {
+                "from": 70,
+                "color": "green"
+            },
+            {
+                "from": 100,
+                "color": "green"
+            },
+            {
+                "from": 120,
+                "color": "yellow"
+            },
+            {
+                "from": 140,
+                "color": "red"
+            }
+        ],
+        "min": 40,
+        "max": 200,
+        "x": 880,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "795a62c2931d88e6",
+        "type": "ui-gauge",
+        "z": "e8ad27b17437698f",
+        "name": "Spo2",
+        "group": "gVitals",
+        "order": 1,
+        "width": 6,
+        "height": 4,
+        "gtype": "gauge-half",
+        "gstyle": "needle",
+        "title": "SpO2",
+        "units": "",
+        "segments": [
+            {
+                "from": 70,
+                "color": "red"
+            },
+            {
+                "from": 90,
+                "color": "yellow"
+            },
+            {
+                "from": 94,
+                "color": "green"
+            },
+            {
+                "from": 96,
+                "color": "green"
+            }
+        ],
+        "min": 70,
+        "max": 100,
+        "x": 880,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7d61cb8a4f9ef2d0",
+        "type": "ui-gauge",
+        "z": "e8ad27b17437698f",
+        "name": "Pin",
+        "group": "gVitals",
+        "order": 2,
+        "width": 3,
+        "height": 3,
+        "gtype": "gauge-battery",
+        "gstyle": "needle",
+        "title": "Pin",
+        "units": "",
+        "segments": [
+            {
+                "from": 0,
+                "color": "red"
+            },
+            {
+                "from": 20,
+                "color": "yellow"
+            },
+            {
+                "from": 50,
+                "color": "green"
+            }
+        ],
+        "min": 0,
+        "max": 100,
+        "x": 870,
+        "y": 160,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "69f60d29a31e34f6",
+        "type": "ui-text",
+        "z": "e8ad27b17437698f",
+        "group": "gVitals",
+        "order": 3,
+        "width": 3,
+        "height": 1,
+        "name": "Buoc",
+        "label": "Buoc chan",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "x": 870,
+        "y": 200,
+        "wires": []
+    },
+    {
+        "id": "9307ec61b3be1fd3",
+        "type": "ui-text",
+        "z": "e8ad27b17437698f",
+        "group": "gVitals",
+        "order": 4,
+        "width": 6,
+        "height": 1,
+        "name": "Status",
+        "label": "Trang thai",
+        "format": "{{msg.payload}}",
+        "layout": "row-left",
+        "x": 880,
+        "y": 240,
+        "wires": []
+    },
+    {
+        "id": "eaae408a3ca8ae6a",
+        "type": "ui-chart",
+        "z": "e8ad27b17437698f",
+        "group": "gChart",
+        "name": "Chart",
+        "label": "Nhip tim & SpO2",
+        "order": 0,
+        "chartType": "line",
+        "width": 12,
+        "height": 6,
+        "x": 880,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2a7b2e2f6509061e",
+        "type": "function",
+        "z": "e8ad27b17437698f",
+        "name": "Alert",
+        "func": "var d=msg.payload||{};var a=[];var ac=global.get(\"ac\")||{};var n=Date.now();if(d.heartRate>120)a.push({deviceId:d.deviceId,type:\"HIGH_HEART_RATE\",severity:\"warning\",value:d.heartRate,threshold:120,sourceSeq:d.seq,timestamp:n,message:\"HR cao: \"+d.heartRate+\" BPM\"});if(d.heartRate<50)a.push({deviceId:d.deviceId,type:\"LOW_HEART_RATE\",severity:\"warning\",value:d.heartRate,threshold:50,sourceSeq:d.seq,timestamp:n,message:\"HR thap: \"+d.heartRate+\" BPM\"});if(d.spo2<94)a.push({deviceId:d.deviceId,type:\"LOW_SPO2\",severity:\"warning\",value:d.spo2,threshold:94,sourceSeq:d.seq,timestamp:n,message:\"SpO2 thap: \"+d.spo2+\"%\"});if(d.fallDetected===true)a.push({deviceId:d.deviceId,type:\"FALL_DETECTED\",severity:\"critical\",value:true,threshold:null,sourceSeq:d.seq,timestamp:n,message:\"PHAT HIEN NGA!\"});if(d.battery<=20)a.push({deviceId:d.deviceId,type:\"LOW_BATTERY\",severity:\"warning\",value:d.battery,threshold:20,sourceSeq:d.seq,timestamp:n,message:\"Pin yeu: \"+d.battery+\"%\"});var k=d.deviceId+\"_a\";var c=JSON.stringify(a.map(function(x){return x.type;}).sort());if(c===(ac[k]||\"\"))return null;ac[k]=c;global.set(\"ac\",ac);var m=a.map(function(x){return{x}});return[m.length?m:null];",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 630,
+        "y": 340,
+        "wires": [
+            [
+                "5309ecbda6a6a4c6"
+            ]
+        ]
+    },
+    {
+        "id": "5309ecbda6a6a4c6",
+        "type": "mqtt out",
+        "z": "e8ad27b17437698f",
+        "name": "Alert",
+        "topic": "iot31/nhom-thanh-danh/health-band/alert",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "broker1",
+        "x": 870,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "47a323a1f2fa1e15",
+        "type": "inject",
+        "z": "e8ad27b17437698f",
+        "name": "Off",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 250,
+        "y": 400,
+        "wires": [
+            [
+                "7aa86c3ea26542a1"
+            ]
+        ]
+    },
+    {
+        "id": "7aa86c3ea26542a1",
+        "type": "function",
+        "z": "e8ad27b17437698f",
+        "name": "Offline",
+        "func": "var g=Date.now()-(global.get(\"lts\")||0);if(g>8000&&global.get(\"ofs\")!==true){global.set(\"ofs\",true);var n=Date.now();return{payload:{deviceId:\"health-band-01\",type:\"DEVICE_OFFLINE\",severity:\"critical\",value:null,threshold:null,sourceSeq:0,timestamp:n,message:\"MAT KET NOI!\"}};}if(g<=8000&&global.get(\"ofs\")===true)global.set(\"ofs\",false);return null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 450,
+        "y": 400,
+        "wires": [
+            [
+                "5309ecbda6a6a4c6"
+            ]
+        ]
+    },
+    {
+        "id": "683af630d8950cd5",
+        "type": "ui-button",
+        "z": "e8ad27b17437698f",
+        "group": "gCtrl",
+        "name": "Normal",
+        "label": "Binh thuong",
+        "order": 0,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-n\",\"command\":\"setMode\",\"value\":\"normal\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 480,
+        "wires": [
+            [
+                "157b4e7865075211"
+            ]
+        ]
+    },
+    {
+        "id": "727d83bb32d2c5b6",
+        "type": "ui-button",
+        "z": "e8ad27b17437698f",
+        "group": "gCtrl",
+        "name": "HighHR",
+        "label": "HR cao",
+        "order": 1,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-h\",\"command\":\"setMode\",\"value\":\"high_hr\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 520,
+        "wires": [
+            [
+                "157b4e7865075211"
+            ]
+        ]
+    },
+    {
+        "id": "5e4e527ba6fc6732",
+        "type": "ui-button",
+        "z": "e8ad27b17437698f",
+        "group": "gCtrl",
+        "name": "LowSpO2",
+        "label": "SpO2 thap",
+        "order": 2,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-s\",\"command\":\"setMode\",\"value\":\"low_spo2\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 560,
+        "wires": [
+            [
+                "157b4e7865075211"
+            ]
+        ]
+    },
+    {
+        "id": "0cbe73cbe908b9ee",
+        "type": "ui-button",
+        "z": "e8ad27b17437698f",
+        "group": "gCtrl",
+        "name": "Fall",
+        "label": "Nga",
+        "order": 3,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-f\",\"command\":\"setMode\",\"value\":\"fall\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 600,
+        "wires": [
+            [
+                "157b4e7865075211"
+            ]
+        ]
+    },
+    {
+        "id": "2c41ef1ba451d053",
+        "type": "ui-button",
+        "z": "e8ad27b17437698f",
+        "group": "gCtrl",
+        "name": "LowBat",
+        "label": "Pin yeu",
+        "order": 4,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-b\",\"command\":\"setMode\",\"value\":\"low_battery\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 640,
+        "wires": [
+            [
+                "157b4e7865075211"
+            ]
+        ]
+    },
+    {
+        "id": "d4a6f3b7980ccb6a",
+        "type": "ui-button",
+        "z": "e8ad27b17437698f",
+        "group": "gCtrl",
+        "name": "ResetSt",
+        "label": "Reset Steps",
+        "order": 5,
+        "width": 2,
+        "height": 1,
+        "payload": "{\"requestId\":\"c-r\",\"command\":\"resetSteps\"}",
+        "payloadType": "json",
+        "x": 250,
+        "y": 680,
+        "wires": [
+            [
+                "157b4e7865075211"
+            ]
+        ]
+    },
+    {
+        "id": "157b4e7865075211",
+        "type": "function",
+        "z": "e8ad27b17437698f",
+        "name": "Cmd",
+        "func": "return{payload:msg.payload,topic:\"iot31/nhom-thanh-danh/health-band/command\"};",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 500,
+        "y": 580,
+        "wires": [
+            [
+                "9eb41bb5c3a23074"
+            ]
+        ]
+    },
+    {
+        "id": "9eb41bb5c3a23074",
+        "type": "mqtt out",
+        "z": "e8ad27b17437698f",
+        "name": "Cmd",
+        "topic": "iot31/nhom-thanh-danh/health-band/command",
+        "qos": "1",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "broker1",
+        "x": 710,
+        "y": 580,
+        "wires": []
+    }
+]

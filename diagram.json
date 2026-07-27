@@ -1,72 +1,138 @@
 {
-    "version": 1,
-    "author": "Nhom Do an 31",
-    "editor": "wokwi",
-    "parts": [
-        {
-            "type": "board-esp32-devkit-c-v4",
-            "id": "esp32",
-            "top": 0,
-            "left": 0,
-            "attrs": {}
-        },
-        {
-            "type": "wokwi-led",
-            "id": "statusLed",
-            "top": 20,
-            "left": 260,
-            "attrs": {
-                "color": "green",
-                "label": "STATUS"
-            }
-        },
-        {
-            "type": "wokwi-resistor",
-            "id": "statusResistor",
-            "top": 95,
-            "left": 265,
-            "rotate": 90,
-            "attrs": {
-                "value": "220"
-            }
-        }
-    ],
-    "connections": [
-        [
-            "esp32:TX0",
-            "$serialMonitor:RX",
-            "",
-            []
-        ],
-        [
-            "esp32:RX0",
-            "$serialMonitor:TX",
-            "",
-            []
-        ],
-        [
-            "esp32:2",
-            "statusLed:A",
-            "green",
-            []
-        ],
-        [
-            "statusLed:C",
-            "statusResistor:1",
-            "black",
-            []
-        ],
-        [
-            "statusResistor:2",
-            "esp32:GND.1",
-            "black",
-            []
-        ]
-    ],
-    "dependencies": {},
-    "serialMonitor": {
-        "display": "terminal",
-        "newline": "lf",
-        "convertEol": true
+  "version": 1,
+  "author": "IoT Group 9 - Health Band",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp32",
+      "top": 10,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled",
+      "top": -70,
+      "left": 330,
+      "attrs": {
+        "i2cAddress": "0x3c"
+      }
+    },
+    {
+      "type": "wokwi-rgb-led",
+      "id": "stateRgb",
+      "top": 95,
+      "left": 380,
+      "attrs": {
+        "common": "cathode",
+        "label": "DEVICE STATE"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rgbRedResistor",
+      "top": 155,
+      "left": 300,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rgbGreenResistor",
+      "top": 155,
+      "left": 345,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "rgbBlueResistor",
+      "top": 155,
+      "left": 390,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "alertBuzzer",
+      "top": 240,
+      "left": 445,
+      "attrs": {
+        "mode": "smooth",
+        "volume": "0.1"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "fallButton",
+      "top": 245,
+      "left": 315,
+      "attrs": {
+        "color": "red",
+        "label": "FALL / SOS",
+        "key": "F",
+        "bounce": "0"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "statusLed",
+      "top": 345,
+      "left": 380,
+      "attrs": {
+        "color": "green",
+        "label": "MQTT STATUS"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "statusResistor",
+      "top": 345,
+      "left": 315,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
     }
+  ],
+  "connections": [
+    ["esp32:TX0", "$serialMonitor:RX", "", []],
+    ["esp32:RX0", "$serialMonitor:TX", "", []],
+
+    ["oled:VCC", "esp32:3V3", "red", []],
+    ["oled:GND", "esp32:GND.1", "black", []],
+    ["oled:SDA", "esp32:21", "green", []],
+    ["oled:SCL", "esp32:22", "blue", []],
+
+    ["esp32:25", "rgbRedResistor:1", "red", []],
+    ["rgbRedResistor:2", "stateRgb:R", "red", []],
+    ["esp32:26", "rgbGreenResistor:1", "green", []],
+    ["rgbGreenResistor:2", "stateRgb:G", "green", []],
+    ["esp32:27", "rgbBlueResistor:1", "blue", []],
+    ["rgbBlueResistor:2", "stateRgb:B", "blue", []],
+    ["stateRgb:COM", "esp32:GND.2", "black", []],
+
+    ["esp32:18", "alertBuzzer:2", "purple", []],
+    ["alertBuzzer:1", "esp32:GND.2", "black", []],
+
+    ["esp32:19", "fallButton:1.l", "orange", []],
+    ["fallButton:2.l", "esp32:GND.2", "black", []],
+
+    ["esp32:2", "statusResistor:1", "green", []],
+    ["statusResistor:2", "statusLed:A", "green", []],
+    ["statusLed:C", "esp32:GND.2", "black", []]
+  ],
+  "dependencies": {},
+  "serialMonitor": {
+    "display": "terminal",
+    "newline": "lf",
+    "convertEol": true
+  }
 }

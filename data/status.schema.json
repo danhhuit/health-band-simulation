@@ -7,7 +7,8 @@
     "deviceId",
     "online",
     "uptime",
-    "firmwareVersion"
+    "firmwareVersion",
+    "activeMode"
   ],
   "properties": {
     "deviceId": {
@@ -24,6 +25,10 @@
     "firmwareVersion": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "activeMode": {
+      "type": "string",
+      "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
     }
   }
 }

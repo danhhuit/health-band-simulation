@@ -1,0 +1,1446 @@
+<template>
+  <main class="health-app">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark"><v-icon icon="mdi-watch-variant"></v-icon></div>
+        <div>
+          <h1>{{ tr('Health overview') }}</h1>
+          <p>{{ tr('Health Band 01 · Live simulation') }}</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="language-switch" :aria-label="tr('Language selector')">
+          <button :class="{ active: language === 'vi' }" @click="setLanguage('vi')" title="Tiếng Việt">
+            <span class="flag">🇻🇳</span><span>Tiếng Việt</span>
+          </button>
+          <button :class="{ active: language === 'en' }" @click="setLanguage('en')" title="English">
+            <span class="flag">🇺🇸</span><span>English</span>
+          </button>
+        </div>
+        <span class="today">{{ formattedDate }}</span>
+        <span class="connection" :class="{ online: isOnline }">
+          <i></i>{{ isOnline ? tr('Connected') : tr('Disconnected') }}
+        </span>
+      </div>
+    </header>
+
+    <nav class="view-tabs" aria-label="Application views">
+      <button :class="{ active: activeView === 'overview' }" @click="activeView = 'overview'">
+        <v-icon icon="mdi-view-dashboard-outline"></v-icon>{{ tr('Overview') }}
+      </button>
+      <button :class="{ active: activeView === 'twin' }" @click="activeView = 'twin'">
+        <v-icon icon="mdi-watch-variant"></v-icon>{{ tr('Digital twin') }}
+      </button>
+      <button :class="{ active: activeView === 'architecture' }" @click="activeView = 'architecture'">
+        <v-icon icon="mdi-layers-triple-outline"></v-icon>{{ tr('IoT architecture') }}
+      </button>
+      <button :class="{ active: activeView === 'presenter' }" @click="activeView = 'presenter'">
+        <v-icon icon="mdi-presentation-play"></v-icon>{{ tr('Presenter mode') }}
+      </button>
+      <button :class="{ active: activeView === 'guide' }" @click="activeView = 'guide'">
+        <v-icon icon="mdi-book-open-page-variant-outline"></v-icon>{{ tr('App guide') }}
+      </button>
+    </nav>
+
+    <section v-show="activeView === 'overview'">
+    <section class="status-summary" :class="statusTone">
+      <div class="status-icon">
+        <v-icon :icon="statusIcon" size="28"></v-icon>
+      </div>
+      <div class="status-copy">
+        <span>{{ tr('Current status') }}</span>
+        <h2>{{ statusTitle }}</h2>
+        <p>{{ statusDescription }}</p>
+      </div>
+      <div class="last-sync">
+        <span>{{ tr('Last synced') }}</span>
+        <strong>{{ lastUpdateText }}</strong>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-title">
+        <div><h2>{{ tr('At a glance') }}</h2><p>{{ tr('Latest readings from the simulated wearable') }}</p></div>
+      </div>
+
+      <div class="metric-grid">
+        <article class="metric-card">
+          <div class="metric-head">
+            <span class="metric-icon heart"><v-icon icon="mdi-heart-pulse"></v-icon></span>
+            <span>{{ tr('Heart rate') }}</span>
+          </div>
+          <div class="metric-reading"><strong>{{ telemetry.heartRate }}</strong><small>BPM</small></div>
+          <div class="metric-foot">
+            <span :class="heartRateState.tone">{{ heartRateState.label }}</span>
+            <span>{{ tr('70–90 normal demo range') }}</span>
+          </div>
+        </article>
+
+        <article class="metric-card">
+          <div class="metric-head">
+            <span class="metric-icon oxygen"><v-icon icon="mdi-water-percent"></v-icon></span>
+            <span>{{ tr('Blood oxygen') }}</span>
+          </div>
+          <div class="metric-reading"><strong>{{ telemetry.spo2 }}</strong><small>% SpO₂</small></div>
+          <div class="metric-foot">
+            <span :class="oxygenState.tone">{{ oxygenState.label }}</span>
+            <span>{{ tr('97–99% normal demo range') }}</span>
+          </div>
+        </article>
+
+        <article class="metric-card">
+          <div class="metric-head">
+            <span class="metric-icon steps"><v-icon icon="mdi-walk"></v-icon></span>
+            <span>{{ tr('Steps') }}</span>
+          </div>
+          <div class="metric-reading"><strong>{{ telemetry.steps }}</strong><small>{{ tr('steps') }}</small></div>
+          <div class="metric-foot">
+            <span class="neutral">{{ tr('Today') }}</span>
+            <span>{{ tr('Counter since device startup') }}</span>
+          </div>
+        </article>
+
+        <article class="metric-card">
+          <div class="metric-head">
+            <span class="metric-icon battery"><v-icon icon="mdi-battery-medium"></v-icon></span>
+            <span>{{ tr('Battery') }}</span>
+          </div>
+          <div class="metric-reading"><strong>{{ telemetry.battery }}</strong><small>%</small></div>
+          <div class="battery-bar"><i :style="{ width: telemetry.battery + '%' }"></i></div>
+          <div class="metric-foot">
+            <span :class="batteryState.tone">{{ batteryState.label }}</span>
+            <span>{{ tr('Estimated charge') }}</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel trends-panel">
+        <div class="section-title panel-title">
+          <div><h2>{{ tr('Live trends') }}</h2><p>{{ tr('Most recent 40 telemetry samples') }}</p></div>
+          <div class="chart-legend">
+            <span><i class="heart-line"></i>{{ tr('Heart rate') }}</span>
+            <span><i class="oxygen-line"></i>SpO₂</span>
+          </div>
+        </div>
+
+        <div class="trend-row">
+          <div class="trend-label">
+            <span>{{ tr('Heart rate') }}</span>
+            <strong>{{ telemetry.heartRate }} <small>BPM</small></strong>
+          </div>
+          <div class="chart-wrap">
+            <svg viewBox="0 0 760 150" preserveAspectRatio="none" aria-label="Heart rate trend">
+              <line v-for="y in [30,75,120]" :key="'hr'+y" x1="0" :y1="y" x2="760" :y2="y" class="grid-line"/>
+              <polyline :points="heartRatePoints" class="data-line heart-data"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="trend-row">
+          <div class="trend-label">
+            <span>{{ tr('Blood oxygen') }}</span>
+            <strong>{{ telemetry.spo2 }} <small>%</small></strong>
+          </div>
+          <div class="chart-wrap">
+            <svg viewBox="0 0 760 150" preserveAspectRatio="none" aria-label="Blood oxygen trend">
+              <line v-for="y in [30,75,120]" :key="'sp'+y" x1="0" :y1="y" x2="760" :y2="y" class="grid-line"/>
+              <polyline :points="spo2Points" class="data-line oxygen-data"/>
+            </svg>
+          </div>
+        </div>
+      </article>
+
+      <aside class="panel device-panel">
+        <div class="section-title panel-title"><div><h2>{{ tr('Device details') }}</h2><p>{{ tr('Connection and data quality') }}</p></div></div>
+        <dl class="detail-list">
+          <div><dt>{{ tr('Device ID') }}</dt><dd>{{ telemetry.deviceId }}</dd></div>
+          <div><dt>{{ tr('Connection') }}</dt><dd><span class="mini-dot" :class="{ online: isOnline }"></span>{{ isOnline ? tr('Online') : tr('Offline') }}</dd></div>
+          <div><dt>{{ tr('Signal quality') }}</dt><dd>{{ signalText }}</dd></div>
+          <div><dt>{{ tr('Active scenario') }}</dt><dd>{{ activeModeLabel }}</dd></div>
+          <div><dt>{{ tr('Sequence number') }}</dt><dd>#{{ telemetry.seq }}</dd></div>
+          <div><dt>{{ tr('Update interval') }}</dt><dd>{{ tr('2 seconds') }}</dd></div>
+        </dl>
+        <div class="device-note">
+          <v-icon icon="mdi-information-outline" size="18"></v-icon>
+          {{ tr('Values are generated by an ESP32 simulation in Wokwi.') }}
+        </div>
+      </aside>
+    </section>
+
+    <section class="content-grid lower-grid">
+      <article class="panel controls-panel">
+        <div class="section-title panel-title">
+          <div><h2>{{ tr('Demo controls') }}</h2><p>{{ tr('Choose a scenario to change the simulated readings') }}</p></div>
+          <span class="command-status">{{ tr(commandState) }}</span>
+        </div>
+
+        <div class="scenario-grid">
+          <button :class="{ selected: activeMode === 'normal' }" @click="sendMode('normal')">
+            <v-icon icon="mdi-check-circle-outline"></v-icon><span><strong>{{ tr('Normal') }}</strong><small>{{ tr('Healthy readings') }}</small></span>
+          </button>
+          <button :class="{ selected: activeMode === 'high_hr' }" @click="sendMode('high_hr')">
+            <v-icon icon="mdi-arrow-up"></v-icon><span><strong>{{ tr('High heart rate') }}</strong><small>125–145 BPM</small></span>
+          </button>
+          <button :class="{ selected: activeMode === 'low_hr' }" @click="sendMode('low_hr')">
+            <v-icon icon="mdi-arrow-down"></v-icon><span><strong>{{ tr('Low heart rate') }}</strong><small>40–48 BPM</small></span>
+          </button>
+          <button :class="{ selected: activeMode === 'low_spo2' }" @click="sendMode('low_spo2')">
+            <v-icon icon="mdi-water-minus-outline"></v-icon><span><strong>{{ tr('Low SpO₂') }}</strong><small>85–92%</small></span>
+          </button>
+          <button class="critical-button" :class="{ selected: activeMode === 'fall' }" @click="sendMode('fall')">
+            <v-icon icon="mdi-alert-outline"></v-icon><span><strong>{{ tr('Fall detected') }}</strong><small>{{ tr('Emergency event') }}</small></span>
+          </button>
+          <button :class="{ selected: activeMode === 'low_battery' }" @click="sendMode('low_battery')">
+            <v-icon icon="mdi-battery-alert"></v-icon><span><strong>{{ tr('Low battery') }}</strong><small>12–19%</small></span>
+          </button>
+        </div>
+        <button class="reset-button" @click="resetSteps"><v-icon icon="mdi-restart" size="18"></v-icon>{{ tr('Reset step counter') }}</button>
+      </article>
+
+      <aside class="panel alerts-panel">
+        <div class="section-title panel-title">
+          <div><h2>{{ tr('Health alerts') }}</h2><p>{{ tr('Demo thresholds requiring attention') }}</p></div>
+          <span class="alert-count">{{ activeAlerts.length }}</span>
+        </div>
+
+        <div v-if="activeAlerts.length" class="alert-list">
+          <div v-for="alert in activeAlerts" :key="alert.code" class="alert-item" :class="alert.severity">
+            <v-icon :icon="alert.severity === 'critical' ? 'mdi-alert-octagon-outline' : 'mdi-alert-circle-outline'"></v-icon>
+            <div><strong>{{ alert.title }}</strong><p>{{ alert.detail }}</p></div>
+          </div>
+        </div>
+        <div v-else class="clear-state">
+          <v-icon icon="mdi-check-circle-outline" size="26"></v-icon>
+          <div><strong>{{ tr('No active alerts') }}</strong><p>{{ tr('All readings are within the configured demo limits.') }}</p></div>
+        </div>
+
+        <p class="medical-note">{{ tr('For educational demonstration only. This dashboard is not intended for medical diagnosis.') }}</p>
+      </aside>
+    </section>
+    <section class="panel activity-panel overview-activity">
+      <div class="section-title panel-title">
+        <div><h2>{{ tr('Recent activity') }}</h2><p>{{ tr('Commands and acknowledgements across the IoT system') }}</p></div>
+        <span class="event-total">{{ activity.length }}</span>
+      </div>
+      <div class="activity-list">
+        <div v-for="item in activity.slice(0, 6)" :key="item.id" class="activity-row">
+          <span class="activity-time">{{ item.time }}</span>
+          <span class="activity-source" :class="item.sourceClass">{{ tr(item.source) }}</span>
+          <div><strong>{{ tr(item.title) }}</strong><p>{{ tr(item.detail) }}</p></div>
+        </div>
+        <div v-if="!activity.length" class="empty-activity">{{ tr('Interact with the dashboard to create a traceable event.') }}</div>
+      </div>
+    </section>
+    </section>
+
+    <section v-show="activeView === 'twin'" class="interactive-view">
+      <div class="view-heading">
+        <div><span>{{ tr('Interactive demonstration') }}</span><h2>{{ tr('Health Band digital twin') }}</h2><p>{{ tr('The virtual wearable mirrors live telemetry and device outputs from Wokwi.') }}</p></div>
+        <span class="connection" :class="{ online: isOnline }"><i></i>{{ isOnline ? tr('Live device link') : tr('Device unavailable') }}</span>
+      </div>
+
+      <div class="twin-layout">
+        <article class="panel band-lab">
+          <div class="band-stage">
+            <div class="watch-shadow"></div>
+            <div class="watch-strap strap-top"></div>
+            <div class="watch-body" :class="statusTone">
+              <div class="watch-crown"></div>
+              <div class="watch-screen">
+                <div class="watch-status">
+                  <span>{{ isOnline ? tr('LIVE') : tr('OFFLINE') }}</span>
+                  <span><v-icon icon="mdi-battery-medium" size="13"></v-icon>{{ telemetry.battery }}%</span>
+                </div>
+                <div class="watch-time">{{ watchTime }}</div>
+                <div class="watch-vitals">
+                  <div><v-icon icon="mdi-heart-pulse"></v-icon><strong>{{ telemetry.heartRate }}</strong><small>BPM</small></div>
+                  <div><v-icon icon="mdi-water-percent"></v-icon><strong>{{ telemetry.spo2 }}</strong><small>SpO₂</small></div>
+                </div>
+                <div class="watch-footer"><v-icon icon="mdi-walk" size="13"></v-icon>{{ telemetry.steps }} {{ tr('steps') }} · {{ activeModeLabel }}</div>
+              </div>
+              <span class="device-led" :class="rgbState"></span>
+            </div>
+            <div class="watch-strap strap-bottom"></div>
+          </div>
+          <div class="band-actions">
+            <button @click="sendMode('normal')"><v-icon icon="mdi-check-circle-outline"></v-icon>{{ tr('Return to normal') }}</button>
+            <button class="sos-action" @click="sendMode('fall')"><v-icon icon="mdi-alert-outline"></v-icon>{{ tr('Trigger FALL / SOS') }}</button>
+          </div>
+        </article>
+
+        <aside class="twin-side">
+          <article class="panel hardware-panel">
+            <div class="section-title panel-title"><div><h2>{{ tr('Device outputs') }}</h2><p>{{ tr('What the audience should observe') }}</p></div></div>
+            <div class="output-list">
+              <div><span class="output-icon"><v-icon icon="mdi-monitor-small"></v-icon></span><div><strong>{{ tr('OLED display') }}</strong><p>{{ tr('Shows HR, SpO₂, steps, battery and active scenario.') }}</p></div><b>{{ tr('ON') }}</b></div>
+              <div><span class="output-icon"><v-icon icon="mdi-led-on"></v-icon></span><div><strong>{{ tr('RGB state light') }}</strong><p>{{ tr('Green normal, amber warning, red fall, blue disconnected.') }}</p></div><b :class="rgbState">{{ rgbStateLabel }}</b></div>
+              <div><span class="output-icon"><v-icon icon="mdi-volume-high"></v-icon></span><div><strong>{{ tr('Alert buzzer') }}</strong><p>{{ tr('Sounds when a warning or fall scenario is activated.') }}</p></div><b>{{ buzzerState }}</b></div>
+              <div><span class="output-icon"><v-icon icon="mdi-gesture-tap-button"></v-icon></span><div><strong>{{ tr('FALL / SOS button') }}</strong><p>{{ tr('Press the red button in Wokwi or press the F key.') }}</p></div><b>{{ tr('READY') }}</b></div>
+            </div>
+          </article>
+
+          <article class="panel causal-panel">
+            <div class="section-title panel-title"><div><h2>{{ tr('Cause and effect') }}</h2><p>{{ tr('Proof that this is an interactive IoT system') }}</p></div></div>
+            <ol>
+              <li :class="{ done: commandState !== 'Ready' }"><span>1</span>{{ tr('Viewer selects a scenario') }}</li>
+              <li :class="{ done: lastAcknowledgement }"><span>2</span>{{ tr('ESP32 acknowledges the command') }}</li>
+              <li :class="{ done: telemetry.mode === activeMode }"><span>3</span>{{ tr('Wearable changes its readings') }}</li>
+              <li :class="{ done: activeAlerts.length }"><span>4</span>{{ tr('Node-RED evaluates an alert') }}</li>
+              <li :class="{ done: isOnline }"><span>5</span>{{ tr('Application visualizes the result') }}</li>
+            </ol>
+            <div class="ack-box">
+              <span>{{ tr('Latest device acknowledgement') }}</span>
+              <strong>{{ lastAcknowledgement || tr('Waiting for the upgraded firmware event topic') }}</strong>
+            </div>
+          </article>
+        </aside>
+      </div>
+    </section>
+
+    <section v-show="activeView === 'architecture'" class="interactive-view">
+      <div class="view-heading">
+        <div><span>{{ tr('System learning mode') }}</span><h2>{{ tr('Four-layer IoT architecture') }}</h2><p>{{ tr('Select a layer to explain its responsibility and its implementation in this project.') }}</p></div>
+        <button class="journey-button" @click="playDataJourney"><v-icon icon="mdi-play"></v-icon>{{ journeyRunning ? tr('Playing data journey') : tr('Play data journey') }}</button>
+      </div>
+
+      <div class="architecture-flow">
+        <button v-for="(layer, index) in architectureLayers" :key="layer.id"
+                class="layer-card" :class="[layer.tone, { selected: selectedLayer === index, pulse: journeyStep === index }]"
+                @click="selectedLayer = index">
+          <span class="layer-number">0{{ index + 1 }}</span>
+          <v-icon :icon="layer.icon" size="28"></v-icon>
+          <strong>{{ tr(layer.name) }}</strong>
+          <small>{{ tr(layer.short) }}</small>
+        </button>
+        <div class="flow-line"><i :style="{ width: ((journeyStep + 1) * 25) + '%' }"></i></div>
+      </div>
+
+      <div class="architecture-detail">
+        <article class="panel selected-layer">
+          <span class="layer-kicker">{{ tr('LAYER') }} 0{{ selectedLayer + 1 }}</span>
+          <h2>{{ tr(selectedLayerData.name) }}</h2>
+          <p class="layer-purpose">{{ tr(selectedLayerData.purpose) }}</p>
+          <div class="layer-info-grid">
+            <div><span>{{ tr('Components in this project') }}</span><strong>{{ tr(selectedLayerData.components) }}</strong></div>
+            <div><span>{{ tr('What it does') }}</span><strong>{{ tr(selectedLayerData.operation) }}</strong></div>
+            <div><span>{{ tr('Why it matters') }}</span><strong>{{ tr(selectedLayerData.value) }}</strong></div>
+            <div><span>{{ tr('Evidence during demo') }}</span><strong>{{ tr(selectedLayerData.evidence) }}</strong></div>
+          </div>
+        </article>
+        <aside class="panel payload-panel">
+          <div class="section-title panel-title"><div><h2>{{ tr('Live data packet') }}</h2><p>{{ tr('JSON traveling through the four layers') }}</p></div></div>
+          <pre>{{ livePacket }}</pre>
+          <div class="topic-chip"><span>{{ tr('MQTT topic') }}</span><strong>.../health-band/telemetry</strong></div>
+        </aside>
+      </div>
+    </section>
+
+    <section v-show="activeView === 'presenter'" class="interactive-view">
+      <div class="view-heading">
+        <div><span>{{ tr('Guided classroom demo') }}</span><h2>{{ tr('Presenter mode') }}</h2><p>{{ tr('Use this sequence to involve the audience and explain each system reaction.') }}</p></div>
+        <span class="step-counter">{{ tr('Step') }} {{ presenterIndex + 1 }} / {{ presenterSteps.length }}</span>
+      </div>
+
+      <div class="presenter-layout">
+        <article class="panel presenter-card">
+          <div class="presenter-progress"><i :style="{ width: ((presenterIndex + 1) / presenterSteps.length * 100) + '%' }"></i></div>
+          <span class="presenter-label">{{ tr(presenterStep.label) }}</span>
+          <h2>{{ tr(presenterStep.title) }}</h2>
+          <p>{{ tr(presenterStep.description) }}</p>
+          <div class="audience-prompt">
+            <v-icon icon="mdi-account-voice"></v-icon>
+            <div><span>{{ tr('Ask the audience') }}</span><strong>{{ tr(presenterStep.question) }}</strong></div>
+          </div>
+          <div class="expected-result">
+            <span>{{ tr('Expected result') }}</span>
+            <p>{{ tr(presenterStep.expected) }}</p>
+          </div>
+          <div class="presenter-actions">
+            <button @click="previousPresenterStep" :disabled="presenterIndex === 0"><v-icon icon="mdi-chevron-left"></v-icon>{{ tr('Previous') }}</button>
+            <button class="run-step" @click="runPresenterStep"><v-icon icon="mdi-play-circle-outline"></v-icon>{{ tr('Run this step') }}</button>
+            <button @click="nextPresenterStep" :disabled="presenterIndex === presenterSteps.length - 1">{{ tr('Next') }}<v-icon icon="mdi-chevron-right"></v-icon></button>
+          </div>
+        </article>
+
+        <aside class="panel presenter-live">
+          <div class="section-title panel-title"><div><h2>{{ tr('Live proof') }}</h2><p>{{ tr('Observe the result while presenting') }}</p></div></div>
+          <div class="proof-reading"><span>{{ tr('Heart rate') }}</span><strong>{{ telemetry.heartRate }} BPM</strong></div>
+          <div class="proof-reading"><span>{{ tr('Blood oxygen') }}</span><strong>{{ telemetry.spo2 }}%</strong></div>
+          <div class="proof-reading"><span>{{ tr('Device mode') }}</span><strong>{{ activeModeLabel }}</strong></div>
+          <div class="proof-reading"><span>{{ tr('Active alerts') }}</span><strong>{{ activeAlerts.length }}</strong></div>
+          <div class="proof-reading"><span>{{ tr('Device response') }}</span><strong>{{ lastAcknowledgement || tr('Waiting') }}</strong></div>
+        </aside>
+      </div>
+
+      <article class="panel activity-panel presenter-activity">
+        <div class="section-title panel-title"><div><h2>{{ tr('End-to-end event timeline') }}</h2><p>{{ tr('A trace of audience action, device response and rule evaluation') }}</p></div></div>
+        <div class="activity-list">
+          <div v-for="item in activity" :key="item.id" class="activity-row">
+            <span class="activity-time">{{ item.time }}</span>
+            <span class="activity-source" :class="item.sourceClass">{{ tr(item.source) }}</span>
+            <div><strong>{{ tr(item.title) }}</strong><p>{{ tr(item.detail) }}</p></div>
+          </div>
+          <div v-if="!activity.length" class="empty-activity">{{ tr('Run a presenter step to begin the trace.') }}</div>
+        </div>
+      </article>
+    </section>
+
+    <section v-show="activeView === 'guide'" class="interactive-view">
+      <div class="view-heading">
+        <div><span>{{ tr('Built-in documentation') }}</span><h2>{{ tr('Application guide') }}</h2><p>{{ tr('Understand every page, control and observable result before presenting the project.') }}</p></div>
+      </div>
+      <div class="guide-grid">
+        <article v-for="page in guidePages" :key="page.id" class="panel guide-card">
+          <div class="guide-icon"><v-icon :icon="page.icon" size="27"></v-icon></div>
+          <div>
+            <span>{{ tr(page.audience) }}</span>
+            <h2>{{ tr(page.title) }}</h2>
+            <p>{{ tr(page.purpose) }}</p>
+          </div>
+          <ul>
+            <li v-for="feature in page.features" :key="feature"><v-icon icon="mdi-check-circle-outline" size="16"></v-icon>{{ tr(feature) }}</li>
+          </ul>
+          <div class="guide-demo"><strong>{{ tr('How to demonstrate') }}</strong><p>{{ tr(page.demo) }}</p></div>
+          <button @click="activeView = page.target"><v-icon icon="mdi-arrow-right-circle-outline"></v-icon>{{ tr('Open this page') }}</button>
+        </article>
+      </div>
+      <article class="panel glossary-panel">
+        <div class="section-title panel-title"><div><h2>{{ tr('Function glossary') }}</h2><p>{{ tr('What each interactive control proves') }}</p></div></div>
+        <div class="glossary-grid">
+          <div v-for="item in functionGlossary" :key="item.name"><strong>{{ tr(item.name) }}</strong><p>{{ tr(item.description) }}</p></div>
+        </div>
+      </article>
+    </section>
+  </main>
+</template>
+
+<script>
+export default {
+  data () {
+    return {
+      viTranslations: {
+  'Health overview': 'Tổng quan sức khỏe',
+  'Health Band 01 · Live simulation': 'Vòng tay 01 · Mô phỏng trực tiếp',
+  'Language selector': 'Chọn ngôn ngữ',
+  'Connected': 'Đã kết nối',
+  'Disconnected': 'Mất kết nối',
+  'Overview': 'Tổng quan',
+  'Digital twin': 'Vòng tay số',
+  'IoT architecture': 'Kiến trúc IoT',
+  'Presenter mode': 'Chế độ thuyết trình',
+  'App guide': 'Hướng dẫn ứng dụng',
+  'Current status': 'Trạng thái hiện tại',
+  'Last synced': 'Đồng bộ gần nhất',
+  'Waiting for data': 'Đang chờ dữ liệu',
+  'Just now': 'Vừa xong',
+  'At a glance': 'Chỉ số chính',
+  'Latest readings from the simulated wearable': 'Dữ liệu mới nhất từ vòng tay mô phỏng',
+  'Heart rate': 'Nhịp tim',
+  'Blood oxygen': 'Nồng độ oxy máu',
+  'Steps': 'Bước chân',
+  'steps': 'bước',
+  'Battery': 'Pin',
+  'Today': 'Hôm nay',
+  'Counter since device startup': 'Bộ đếm từ khi thiết bị khởi động',
+  'Estimated charge': 'Dung lượng ước tính',
+  '70–90 normal demo range': 'Khoảng mô phỏng bình thường 70–90',
+  '97–99% normal demo range': 'Khoảng mô phỏng bình thường 97–99%',
+  'Live trends': 'Biểu đồ trực tiếp',
+  'Most recent 40 telemetry samples': '40 mẫu telemetry gần nhất',
+  'Device details': 'Chi tiết thiết bị',
+  'Connection and data quality': 'Kết nối và chất lượng dữ liệu',
+  'Device ID': 'Mã thiết bị',
+  'Connection': 'Kết nối',
+  'Online': 'Trực tuyến',
+  'Offline': 'Ngoại tuyến',
+  'Signal quality': 'Chất lượng tín hiệu',
+  'Active scenario': 'Tình huống đang chạy',
+  'Sequence number': 'Số thứ tự bản tin',
+  'Update interval': 'Chu kỳ cập nhật',
+  '2 seconds': '2 giây',
+  'Values are generated by an ESP32 simulation in Wokwi.': 'Các giá trị được tạo bởi ESP32 mô phỏng trên Wokwi.',
+  'Demo controls': 'Điều khiển mô phỏng',
+  'Choose a scenario to change the simulated readings': 'Chọn tình huống để thay đổi dữ liệu mô phỏng',
+  'Ready': 'Sẵn sàng',
+  'Normal': 'Bình thường',
+  'Healthy readings': 'Chỉ số ổn định',
+  'High heart rate': 'Nhịp tim cao',
+  'Low heart rate': 'Nhịp tim thấp',
+  'Low SpO₂': 'SpO₂ thấp',
+  'Fall detected': 'Phát hiện té ngã',
+  'Emergency event': 'Sự kiện khẩn cấp',
+  'Low battery': 'Pin yếu',
+  'Reset step counter': 'Đặt lại số bước',
+  'Health alerts': 'Cảnh báo sức khỏe',
+  'Demo thresholds requiring attention': 'Các ngưỡng mô phỏng cần chú ý',
+  'No active alerts': 'Không có cảnh báo',
+  'All readings are within the configured demo limits.': 'Tất cả chỉ số nằm trong giới hạn mô phỏng đã cấu hình.',
+  'For educational demonstration only. This dashboard is not intended for medical diagnosis.': 'Chỉ dùng cho mục đích học tập và trình diễn, không dùng để chẩn đoán y tế.',
+  'Recent activity': 'Hoạt động gần đây',
+  'Commands and acknowledgements across the IoT system': 'Lệnh và phản hồi xuyên suốt hệ thống IoT',
+  'Interact with the dashboard to create a traceable event.': 'Hãy tương tác với Dashboard để tạo sự kiện có thể truy vết.',
+  'Interactive demonstration': 'Mô phỏng tương tác',
+  'Health Band digital twin': 'Mô hình vòng tay số',
+  'The virtual wearable mirrors live telemetry and device outputs from Wokwi.': 'Vòng tay số phản ánh telemetry và đầu ra thiết bị trực tiếp từ Wokwi.',
+  'Live device link': 'Thiết bị đang trực tuyến',
+  'Device unavailable': 'Thiết bị chưa sẵn sàng',
+  'LIVE': 'TRỰC TIẾP',
+  'OFFLINE': 'NGOẠI TUYẾN',
+  'Return to normal': 'Trở về bình thường',
+  'Trigger FALL / SOS': 'Kích hoạt FALL / SOS',
+  'Device outputs': 'Đầu ra thiết bị',
+  'What the audience should observe': 'Những gì người xem cần quan sát',
+  'OLED display': 'Màn hình OLED',
+  'Shows HR, SpO₂, steps, battery and active scenario.': 'Hiển thị nhịp tim, SpO₂, số bước, pin và tình huống hiện tại.',
+  'RGB state light': 'Đèn trạng thái RGB',
+  'Green normal, amber warning, red fall, blue disconnected.': 'Xanh lá: bình thường; vàng: cảnh báo; đỏ: té ngã; xanh dương: mất kết nối.',
+  'Alert buzzer': 'Còi cảnh báo',
+  'Sounds when a warning or fall scenario is activated.': 'Phát âm khi có cảnh báo hoặc tình huống té ngã.',
+  'FALL / SOS button': 'Nút FALL / SOS',
+  'Press the red button in Wokwi or press the F key.': 'Nhấn nút đỏ trên Wokwi hoặc phím F.',
+  'ON': 'BẬT',
+  'READY': 'SẴN SÀNG',
+  'Cause and effect': 'Nguyên nhân và kết quả',
+  'Proof that this is an interactive IoT system': 'Bằng chứng đây là một hệ thống IoT có tương tác',
+  'Viewer selects a scenario': 'Người xem chọn tình huống',
+  'ESP32 acknowledges the command': 'ESP32 xác nhận lệnh',
+  'Wearable changes its readings': 'Vòng tay thay đổi chỉ số',
+  'Node-RED evaluates an alert': 'Node-RED đánh giá cảnh báo',
+  'Application visualizes the result': 'Ứng dụng hiển thị kết quả',
+  'Latest device acknowledgement': 'Phản hồi thiết bị gần nhất',
+  'Waiting for the upgraded firmware event topic': 'Đang chờ phản hồi từ topic event của firmware',
+  'System learning mode': 'Chế độ tìm hiểu hệ thống',
+  'Four-layer IoT architecture': 'Kiến trúc IoT bốn tầng',
+  'Select a layer to explain its responsibility and its implementation in this project.': 'Chọn từng tầng để xem trách nhiệm và cách áp dụng trong đồ án.',
+  'Playing data journey': 'Đang chạy hành trình dữ liệu',
+  'Play data journey': 'Chạy hành trình dữ liệu',
+  'LAYER': 'TẦNG',
+  'Components in this project': 'Thành phần trong đồ án',
+  'What it does': 'Chức năng',
+  'Why it matters': 'Ý nghĩa',
+  'Evidence during demo': 'Bằng chứng khi demo',
+  'Live data packet': 'Gói dữ liệu trực tiếp',
+  'JSON traveling through the four layers': 'JSON đang đi qua bốn tầng',
+  'MQTT topic': 'MQTT topic',
+  'Guided classroom demo': 'Kịch bản trình bày trên lớp',
+  'Use this sequence to involve the audience and explain each system reaction.': 'Dùng trình tự này để tương tác với người xem và giải thích từng phản ứng.',
+  'Step': 'Bước',
+  'Ask the audience': 'Câu hỏi cho người xem',
+  'Expected result': 'Kết quả mong đợi',
+  'Previous': 'Trước',
+  'Run this step': 'Chạy bước này',
+  'Next': 'Tiếp',
+  'Live proof': 'Bằng chứng trực tiếp',
+  'Observe the result while presenting': 'Quan sát kết quả trong khi trình bày',
+  'Device mode': 'Chế độ thiết bị',
+  'Active alerts': 'Cảnh báo đang có',
+  'Device response': 'Phản hồi thiết bị',
+  'Waiting': 'Đang chờ',
+  'End-to-end event timeline': 'Dòng sự kiện đầu cuối',
+  'A trace of audience action, device response and rule evaluation': 'Dấu vết từ thao tác người xem, phản hồi thiết bị đến đánh giá luật',
+  'Run a presenter step to begin the trace.': 'Chạy một bước thuyết trình để bắt đầu ghi dấu vết.',
+  'Built-in documentation': 'Tài liệu tích hợp',
+  'Application guide': 'Hướng dẫn toàn bộ ứng dụng',
+  'Understand every page, control and observable result before presenting the project.': 'Hiểu từng trang, nút điều khiển và kết quả cần quan sát trước khi thuyết trình.',
+  'How to demonstrate': 'Cách trình diễn',
+  'Open this page': 'Mở trang này',
+  'Function glossary': 'Giải thích chức năng',
+  'What each interactive control proves': 'Mỗi chức năng tương tác chứng minh điều gì',
+  'For the end user': 'Dành cho người sử dụng',
+  'For the technical explanation': 'Dành cho phần giải thích kỹ thuật',
+  'For the live demonstration': 'Dành cho phần demo trực tiếp',
+  'For the presenter': 'Dành cho người thuyết trình',
+  'For learning the application': 'Dành cho người mới sử dụng',
+  'Shows the current health state and all live measurements in one place.': 'Hiển thị trạng thái sức khỏe và các chỉ số trực tiếp tại một nơi.',
+  'Status banner explains whether readings are normal, warning or critical.': 'Thanh trạng thái cho biết dữ liệu bình thường, cảnh báo hay nghiêm trọng.',
+  'Metric cards show heart rate, SpO₂, steps and battery.': 'Các thẻ chỉ số hiển thị nhịp tim, SpO₂, số bước và pin.',
+  'Trend charts preserve the latest 40 samples.': 'Biểu đồ lưu 40 mẫu dữ liệu gần nhất.',
+  'Scenario controls send MQTT commands to ESP32.': 'Điều khiển tình huống gửi lệnh MQTT đến ESP32.',
+  'Alerts and activity prove the processing result.': 'Cảnh báo và hoạt động chứng minh kết quả xử lý.',
+  'Start Wokwi, select Normal, then choose an abnormal scenario and compare the status, metric and alert panels.': 'Chạy Wokwi, chọn Bình thường, sau đó chọn tình huống bất thường và đối chiếu trạng thái, chỉ số, cảnh báo.',
+  'Mirrors the simulated physical wearable and its outputs.': 'Phản ánh thiết bị đeo mô phỏng và các đầu ra phần cứng.',
+  'The watch screen mirrors live telemetry.': 'Màn hình vòng tay phản ánh telemetry trực tiếp.',
+  'The virtual LED mirrors the Wokwi RGB LED color.': 'LED ảo phản ánh màu LED RGB trên Wokwi.',
+  'Cause and effect verifies command acknowledgement.': 'Chuỗi nguyên nhân-kết quả xác minh phản hồi lệnh.',
+  'FALL/SOS provides a clear safety demonstration.': 'FALL/SOS tạo tình huống an toàn trực quan.',
+  'Place Wokwi beside this page, trigger FALL/SOS and compare both screens.': 'Đặt Wokwi cạnh trang này, kích hoạt FALL/SOS và đối chiếu hai màn hình.',
+  'Explains where every component belongs in the four-layer model.': 'Giải thích vị trí của từng thành phần trong mô hình bốn tầng.',
+  'Layer cards select Device, Network, Processing or Application.': 'Các thẻ chọn tầng Thiết bị, Mạng, Xử lý hoặc Ứng dụng.',
+  'The detail panel explains components, operation, value and evidence.': 'Bảng chi tiết giải thích thành phần, hoạt động, giá trị và bằng chứng.',
+  'Data Journey animates one telemetry packet through the system.': 'Hành trình dữ liệu mô phỏng một gói telemetry đi qua hệ thống.',
+  'Use Play data journey, then click each layer while explaining the live JSON packet.': 'Chạy Hành trình dữ liệu, sau đó chọn từng tầng khi giải thích gói JSON.',
+  'Guides a six-step classroom presentation and audience interaction.': 'Hướng dẫn bài trình bày sáu bước và tương tác với người xem.',
+  'Each step provides talking points, a question and expected evidence.': 'Mỗi bước có nội dung nói, câu hỏi và bằng chứng mong đợi.',
+  'Run this step sends the relevant command or opens the relevant view.': 'Chạy bước này sẽ gửi lệnh hoặc mở đúng trang liên quan.',
+  'Live proof and timeline show the current end-to-end result.': 'Bằng chứng trực tiếp và timeline cho thấy kết quả đầu cuối.',
+  'Invite the audience to choose a scenario and run the corresponding presenter step.': 'Mời người xem chọn tình huống và chạy bước trình bày tương ứng.',
+  'Explains every page and interactive control without leaving the app.': 'Giải thích từng trang và chức năng mà không cần rời ứng dụng.',
+  'Use it before presenting or when another team member takes over the demo.': 'Dùng trước khi trình bày hoặc khi thành viên khác tiếp quản phần demo.',
+  'Scenario buttons': 'Các nút tình huống',
+  'Publish setMode commands and let the audience change device behavior.': 'Publish lệnh setMode để người xem thay đổi hành vi thiết bị.',
+  'Reset steps': 'Đặt lại số bước',
+  'Publishes resetSteps and proves two-way control.': 'Publish resetSteps và chứng minh điều khiển hai chiều.',
+  'FALL/SOS': 'FALL/SOS',
+  'Creates a critical fall event visible on Wokwi, MQTT, Node-RED and Dashboard.': 'Tạo sự kiện té ngã nghiêm trọng hiển thị trên Wokwi, MQTT, Node-RED và Dashboard.',
+  'Data journey': 'Hành trình dữ liệu',
+  'Animates the path Device → Network → Processing → Application.': 'Mô phỏng đường đi Thiết bị → Mạng → Xử lý → Ứng dụng.',
+  'Language switch': 'Chuyển ngôn ngữ',
+  'Switches the interface between Vietnamese and English and saves the preference.': 'Chuyển giao diện giữa tiếng Việt và tiếng Anh, đồng thời lưu lựa chọn.',
+  'Event timeline': 'Dòng sự kiện',
+  'Preserves commands, acknowledgements and alerts as demo evidence.': 'Lưu lệnh, phản hồi và cảnh báo làm bằng chứng demo.',
+  'Good': 'Tốt',
+  'Medium': 'Trung bình',
+  'Poor': 'Kém',
+  'Unknown': 'Không xác định',
+  'In range': 'Trong ngưỡng',
+  'High': 'Cao',
+  'Low': 'Thấp',
+  'Unknown status': 'Không rõ trạng thái',
+  'Device is offline': 'Thiết bị đang ngoại tuyến',
+  'Heart rate is above the demo range': 'Nhịp tim cao hơn khoảng mô phỏng',
+  'Heart rate is below the demo range': 'Nhịp tim thấp hơn khoảng mô phỏng',
+  'Blood oxygen is below the demo range': 'SpO₂ thấp hơn khoảng mô phỏng',
+  'Device battery is low': 'Pin thiết bị đang yếu',
+  'Readings look normal': 'Các chỉ số đang bình thường',
+  'No telemetry has been received in the last 8 seconds.': 'Không nhận được telemetry trong 8 giây gần nhất.',
+  'Review the active alert details below.': 'Hãy xem chi tiết cảnh báo bên dưới.',
+  'No simulated health alerts require attention right now.': 'Hiện không có cảnh báo mô phỏng cần chú ý.',
+  'Device offline': 'Thiết bị ngoại tuyến',
+  'No telemetry received for more than 8 seconds.': 'Không nhận được telemetry quá 8 giây.',
+  'The simulated fall event has been triggered.': 'Sự kiện té ngã mô phỏng đã được kích hoạt.',
+  'Low blood oxygen': 'SpO₂ thấp',
+  'BLUE': 'XANH DƯƠNG',
+  'RED': 'ĐỎ',
+  'GREEN': 'XANH LÁ',
+  'AMBER': 'VÀNG',
+  'CRITICAL': 'NGHIÊM TRỌNG',
+  'STANDBY': 'CHỜ',
+  'BEEP': 'KÊU',
+  'Device layer': 'Tầng thiết bị',
+  'Sense and act': 'Thu thập và phản ứng',
+  'Network layer': 'Tầng mạng',
+  'Transport messages': 'Vận chuyển bản tin',
+  'Processing layer': 'Tầng xử lý',
+  'Validate and decide': 'Kiểm tra và ra quyết định',
+  'Application layer': 'Tầng ứng dụng',
+  'Explain and interact': 'Giải thích và tương tác',
+  'This layer represents the physical or simulated wearable that interacts with the user and the environment.': 'Tầng này đại diện cho thiết bị đeo vật lý hoặc mô phỏng tương tác với người dùng và môi trường.',
+  'ESP32, OLED display, FALL button, RGB LED, buzzer and simulated health sensors.': 'ESP32, màn hình OLED, nút FALL, LED RGB, còi và các cảm biến sức khỏe mô phỏng.',
+  'Generates heart rate, SpO2, step, fall and battery data. It also receives commands and changes its physical outputs.': 'Tạo dữ liệu nhịp tim, SpO2, số bước, té ngã và pin; đồng thời nhận lệnh và thay đổi đầu ra vật lý.',
+  'It is the source of observable health data and the place where actions become visible to the audience.': 'Đây là nguồn dữ liệu sức khỏe và là nơi hành động trở nên trực quan với người xem.',
+  'Wokwi OLED values, LED color, buzzer sound, FALL button and the virtual band on this app.': 'Giá trị OLED Wokwi, màu LED, âm còi, nút FALL và vòng tay số trên ứng dụng.',
+  'This layer connects the wearable to the rest of the system using lightweight IoT communication.': 'Tầng này kết nối vòng tay với phần còn lại của hệ thống bằng giao tiếp IoT nhẹ.',
+  'Wokwi-GUEST Wi-Fi, EMQX MQTT broker and the telemetry/status/command/event topics.': 'Wi-Fi Wokwi-GUEST, MQTT broker EMQX và các topic telemetry/status/command/event.',
+  'Moves JSON messages between publishers and subscribers with a clear topic contract.': 'Vận chuyển bản tin JSON giữa publisher và subscriber theo hợp đồng topic rõ ràng.',
+  'It decouples the device from the application, so each part can be developed and tested independently.': 'Tách thiết bị khỏi ứng dụng để từng phần có thể phát triển và kiểm thử độc lập.',
+  'MQTT nodes show connected and the live JSON packet advances through this architecture view.': 'Các node MQTT hiển thị connected và gói JSON tiến qua màn hình kiến trúc.',
+  'This layer turns raw telemetry into useful system state, alerts and traceable events.': 'Tầng này biến telemetry thô thành trạng thái, cảnh báo và sự kiện có thể truy vết.',
+  'Node-RED parsing functions, threshold rules, offline detection and event routing.': 'Các hàm parse Node-RED, luật ngưỡng, phát hiện offline và định tuyến sự kiện.',
+  'Parses JSON, checks demo thresholds, publishes alerts and records the latest device interaction.': 'Parse JSON, kiểm tra ngưỡng demo, publish cảnh báo và ghi nhận tương tác thiết bị.',
+  'It proves the project does more than display numbers: it applies rules and makes decisions.': 'Chứng minh đồ án không chỉ hiển thị số mà còn áp dụng luật và ra quyết định.',
+  'Health alerts, command acknowledgement and the end-to-end activity timeline.': 'Cảnh báo sức khỏe, phản hồi lệnh và timeline hoạt động đầu cuối.',
+  'This is the human-facing layer used by the presenter and the audience.': 'Đây là tầng dành cho người thuyết trình và người xem.',
+  'Overview, Digital Twin, Architecture Explorer, Presenter Mode and evidence views.': 'Tổng quan, Vòng tay số, Kiến trúc, Chế độ thuyết trình và các màn hình bằng chứng.',
+  'Visualizes readings, sends commands, explains the system and guides an interactive demonstration.': 'Trực quan hóa chỉ số, gửi lệnh, giải thích hệ thống và hướng dẫn demo tương tác.',
+  'It makes the IoT system understandable and lets viewers participate in the scenario.': 'Giúp hệ thống IoT dễ hiểu và cho phép người xem tham gia tình huống.',
+  'The audience selects a scenario and watches the wearable, alerts and timeline respond.': 'Người xem chọn tình huống và quan sát vòng tay, cảnh báo cùng timeline phản hồi.',
+  'Introduction': 'Giới thiệu',
+  'Meet the Health Band': 'Làm quen với vòng tay sức khỏe',
+  'Introduce the virtual wearable and point out the OLED, RGB state light, buzzer and FALL button.': 'Giới thiệu vòng tay ảo, OLED, đèn RGB, còi và nút FALL.',
+  'Which measurements would you expect a personal health band to monitor?': 'Bạn mong đợi vòng tay sức khỏe theo dõi những chỉ số nào?',
+  'The audience identifies heart rate, blood oxygen, steps, fall state and battery.': 'Người xem xác định được nhịp tim, SpO2, số bước, té ngã và pin.',
+  'Architecture': 'Kiến trúc',
+  'Follow one telemetry packet': 'Theo dõi một gói telemetry',
+  'Show how a reading moves from the ESP32 through MQTT and Node-RED to the application.': 'Cho thấy dữ liệu đi từ ESP32 qua MQTT, Node-RED đến ứng dụng.',
+  'Why should the device publish to a broker instead of directly updating the web page?': 'Vì sao thiết bị nên publish tới broker thay vì cập nhật trang web trực tiếp?',
+  'The four layers are shown in order and the MQTT packet remains independent of the user interface.': 'Bốn tầng được hiển thị theo thứ tự và gói MQTT độc lập với giao diện.',
+  'Baseline': 'Mốc bình thường',
+  'Establish normal readings': 'Thiết lập chỉ số bình thường',
+  'Return the device to its normal simulation range before introducing abnormal scenarios.': 'Đưa thiết bị về khoảng bình thường trước khi giới thiệu tình huống bất thường.',
+  'Do these readings require attention?': 'Các chỉ số này có cần chú ý không?',
+  'HR 70-90 BPM, SpO2 97-99%, green LED and no active alerts.': 'HR 70-90 BPM, SpO2 97-99%, LED xanh và không có cảnh báo.',
+  'Audience choice': 'Lựa chọn của người xem',
+  'Simulate high heart rate': 'Mô phỏng nhịp tim cao',
+  'Let a viewer trigger a high heart-rate scenario and observe the complete system reaction.': 'Mời người xem kích hoạt nhịp tim cao và quan sát phản ứng toàn hệ thống.',
+  'What should change first: the band, the broker, the rule engine or the dashboard?': 'Thành phần nào thay đổi trước: vòng tay, broker, bộ luật hay Dashboard?',
+  'ESP32 acknowledges the command, HR becomes 125-145 BPM, LED turns amber and an alert appears.': 'ESP32 xác nhận lệnh, HR thành 125-145 BPM, LED vàng và cảnh báo xuất hiện.',
+  'Safety event': 'Sự kiện an toàn',
+  'Trigger the FALL / SOS button': 'Kích hoạt nút FALL / SOS',
+  'Use the red Wokwi button, the F keyboard shortcut or the virtual band control.': 'Dùng nút đỏ Wokwi, phím F hoặc điều khiển trên vòng tay số.',
+  'How should a safety-critical event look different from a health warning?': 'Sự kiện an toàn nghiêm trọng nên khác cảnh báo sức khỏe như thế nào?',
+  'The band shows FALL, the LED turns red, the buzzer sounds and a critical alert is created.': 'Vòng tay hiển thị FALL, LED đỏ, còi kêu và cảnh báo nghiêm trọng được tạo.',
+  'Recovery': 'Phục hồi',
+  'Recover the system': 'Phục hồi hệ thống',
+  'Return to normal and show that warnings clear while the event history remains traceable.': 'Trở về bình thường, xóa cảnh báo hiện tại nhưng vẫn giữ lịch sử sự kiện.',
+  'Why should the current alert disappear but the event remain in the timeline?': 'Vì sao cảnh báo hiện tại biến mất nhưng sự kiện vẫn nằm trong timeline?',
+  'Current status returns to normal, the LED turns green and the historical event is preserved.': 'Trạng thái trở lại bình thường, LED xanh và lịch sử sự kiện vẫn được lưu.',
+  'Read each card, then use Open this page to practice the described function.': 'Đọc từng thẻ rồi dùng Mở trang này để thực hành chức năng được mô tả.'
+      },
+      telemetry: {
+        deviceId: 'health-band-01',
+        heartRate: 0,
+        spo2: 0,
+        steps: 0,
+        battery: 0,
+        fallDetected: false,
+        signalQuality: 'unknown',
+        seq: 0,
+        mode: 'normal'
+      },
+      history: [],
+      lastSeen: 0,
+      now: Date.now(),
+      activeView: 'overview',
+      language: localStorage.getItem('healthBandLanguage') || 'en',
+      activeMode: 'normal',
+      commandState: 'Ready',
+      lastAcknowledgement: '',
+      activity: [],
+      activityId: 0,
+      selectedLayer: 0,
+      journeyStep: -1,
+      journeyRunning: false,
+      presenterIndex: 0,
+      architectureLayers: [
+        {
+          id: 'device',
+          name: 'Device layer',
+          short: 'Sense and act',
+          icon: 'mdi-watch-variant',
+          tone: 'device',
+          purpose: 'This layer represents the physical or simulated wearable that interacts with the user and the environment.',
+          components: 'ESP32, OLED display, FALL button, RGB LED, buzzer and simulated health sensors.',
+          operation: 'Generates heart rate, SpO2, step, fall and battery data. It also receives commands and changes its physical outputs.',
+          value: 'It is the source of observable health data and the place where actions become visible to the audience.',
+          evidence: 'Wokwi OLED values, LED color, buzzer sound, FALL button and the virtual band on this app.'
+        },
+        {
+          id: 'network',
+          name: 'Network layer',
+          short: 'Transport messages',
+          icon: 'mdi-access-point-network',
+          tone: 'network',
+          purpose: 'This layer connects the wearable to the rest of the system using lightweight IoT communication.',
+          components: 'Wokwi-GUEST Wi-Fi, EMQX MQTT broker and the telemetry/status/command/event topics.',
+          operation: 'Moves JSON messages between publishers and subscribers with a clear topic contract.',
+          value: 'It decouples the device from the application, so each part can be developed and tested independently.',
+          evidence: 'MQTT nodes show connected and the live JSON packet advances through this architecture view.'
+        },
+        {
+          id: 'processing',
+          name: 'Processing layer',
+          short: 'Validate and decide',
+          icon: 'mdi-sitemap-outline',
+          tone: 'processing',
+          purpose: 'This layer turns raw telemetry into useful system state, alerts and traceable events.',
+          components: 'Node-RED parsing functions, threshold rules, offline detection and event routing.',
+          operation: 'Parses JSON, checks demo thresholds, publishes alerts and records the latest device interaction.',
+          value: 'It proves the project does more than display numbers: it applies rules and makes decisions.',
+          evidence: 'Health alerts, command acknowledgement and the end-to-end activity timeline.'
+        },
+        {
+          id: 'application',
+          name: 'Application layer',
+          short: 'Explain and interact',
+          icon: 'mdi-monitor-dashboard',
+          tone: 'application',
+          purpose: 'This is the human-facing layer used by the presenter and the audience.',
+          components: 'Overview, Digital Twin, Architecture Explorer, Presenter Mode and evidence views.',
+          operation: 'Visualizes readings, sends commands, explains the system and guides an interactive demonstration.',
+          value: 'It makes the IoT system understandable and lets viewers participate in the scenario.',
+          evidence: 'The audience selects a scenario and watches the wearable, alerts and timeline respond.'
+        }
+      ],
+      presenterSteps: [
+        {
+          label: 'Introduction',
+          title: 'Meet the Health Band',
+          description: 'Introduce the virtual wearable and point out the OLED, RGB state light, buzzer and FALL button.',
+          question: 'Which measurements would you expect a personal health band to monitor?',
+          expected: 'The audience identifies heart rate, blood oxygen, steps, fall state and battery.',
+          action: 'view-twin'
+        },
+        {
+          label: 'Architecture',
+          title: 'Follow one telemetry packet',
+          description: 'Show how a reading moves from the ESP32 through MQTT and Node-RED to the application.',
+          question: 'Why should the device publish to a broker instead of directly updating the web page?',
+          expected: 'The four layers are shown in order and the MQTT packet remains independent of the user interface.',
+          action: 'journey'
+        },
+        {
+          label: 'Baseline',
+          title: 'Establish normal readings',
+          description: 'Return the device to its normal simulation range before introducing abnormal scenarios.',
+          question: 'Do these readings require attention?',
+          expected: 'HR 70-90 BPM, SpO2 97-99%, green LED and no active alerts.',
+          mode: 'normal'
+        },
+        {
+          label: 'Audience choice',
+          title: 'Simulate high heart rate',
+          description: 'Let a viewer trigger a high heart-rate scenario and observe the complete system reaction.',
+          question: 'What should change first: the band, the broker, the rule engine or the dashboard?',
+          expected: 'ESP32 acknowledges the command, HR becomes 125-145 BPM, LED turns amber and an alert appears.',
+          mode: 'high_hr'
+        },
+        {
+          label: 'Safety event',
+          title: 'Trigger the FALL / SOS button',
+          description: 'Use the red Wokwi button, the F keyboard shortcut or the virtual band control.',
+          question: 'How should a safety-critical event look different from a health warning?',
+          expected: 'The band shows FALL, the LED turns red, the buzzer sounds and a critical alert is created.',
+          mode: 'fall'
+        },
+        {
+          label: 'Recovery',
+          title: 'Recover the system',
+          description: 'Return to normal and show that warnings clear while the event history remains traceable.',
+          question: 'Why should the current alert disappear but the event remain in the timeline?',
+          expected: 'Current status returns to normal, the LED turns green and the historical event is preserved.',
+          mode: 'normal'
+        }
+      ],
+      guidePages: [
+        {
+          id: 'overview',
+          target: 'overview',
+          icon: 'mdi-view-dashboard-outline',
+          audience: 'For the end user',
+          title: 'Overview',
+          purpose: 'Shows the current health state and all live measurements in one place.',
+          features: [
+            'Status banner explains whether readings are normal, warning or critical.',
+            'Metric cards show heart rate, SpO₂, steps and battery.',
+            'Trend charts preserve the latest 40 samples.',
+            'Scenario controls send MQTT commands to ESP32.',
+            'Alerts and activity prove the processing result.'
+          ],
+          demo: 'Start Wokwi, select Normal, then choose an abnormal scenario and compare the status, metric and alert panels.'
+        },
+        {
+          id: 'twin',
+          target: 'twin',
+          icon: 'mdi-watch-variant',
+          audience: 'For the live demonstration',
+          title: 'Digital twin',
+          purpose: 'Mirrors the simulated physical wearable and its outputs.',
+          features: [
+            'The watch screen mirrors live telemetry.',
+            'The virtual LED mirrors the Wokwi RGB LED color.',
+            'Cause and effect verifies command acknowledgement.',
+            'FALL/SOS provides a clear safety demonstration.'
+          ],
+          demo: 'Place Wokwi beside this page, trigger FALL/SOS and compare both screens.'
+        },
+        {
+          id: 'architecture',
+          target: 'architecture',
+          icon: 'mdi-layers-triple-outline',
+          audience: 'For the technical explanation',
+          title: 'IoT architecture',
+          purpose: 'Explains where every component belongs in the four-layer model.',
+          features: [
+            'Layer cards select Device, Network, Processing or Application.',
+            'The detail panel explains components, operation, value and evidence.',
+            'Data Journey animates one telemetry packet through the system.'
+          ],
+          demo: 'Use Play data journey, then click each layer while explaining the live JSON packet.'
+        },
+        {
+          id: 'presenter',
+          target: 'presenter',
+          icon: 'mdi-presentation-play',
+          audience: 'For the presenter',
+          title: 'Presenter mode',
+          purpose: 'Guides a six-step classroom presentation and audience interaction.',
+          features: [
+            'Each step provides talking points, a question and expected evidence.',
+            'Run this step sends the relevant command or opens the relevant view.',
+            'Live proof and timeline show the current end-to-end result.'
+          ],
+          demo: 'Invite the audience to choose a scenario and run the corresponding presenter step.'
+        },
+        {
+          id: 'guide',
+          target: 'guide',
+          icon: 'mdi-book-open-page-variant-outline',
+          audience: 'For learning the application',
+          title: 'App guide',
+          purpose: 'Explains every page and interactive control without leaving the app.',
+          features: [
+            'Use it before presenting or when another team member takes over the demo.'
+          ],
+          demo: 'Read each card, then use Open this page to practice the described function.'
+        }
+      ],
+      functionGlossary: [
+        { name: 'Scenario buttons', description: 'Publish setMode commands and let the audience change device behavior.' },
+        { name: 'Reset steps', description: 'Publishes resetSteps and proves two-way control.' },
+        { name: 'FALL/SOS', description: 'Creates a critical fall event visible on Wokwi, MQTT, Node-RED and Dashboard.' },
+        { name: 'Data journey', description: 'Animates the path Device → Network → Processing → Application.' },
+        { name: 'Language switch', description: 'Switches the interface between Vietnamese and English and saves the preference.' },
+        { name: 'Event timeline', description: 'Preserves commands, acknowledgements and alerts as demo evidence.' }
+      ]
+    }
+  },
+  computed: {
+    isOnline () {
+      return this.lastSeen > 0 && this.now - this.lastSeen <= 8000
+    },
+    formattedDate () {
+      return new Intl.DateTimeFormat(this.language === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(this.now))
+    },
+    watchTime () {
+      return new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(this.now))
+    },
+    lastUpdateText () {
+      if (!this.lastSeen) return this.tr('Waiting for data')
+      const seconds = Math.max(0, Math.floor((this.now - this.lastSeen) / 1000))
+      if (seconds < 2) return this.tr('Just now')
+      return this.language === 'vi' ? `${seconds} giây trước` : `${seconds} seconds ago`
+    },
+    activeModeLabel () {
+      return this.tr(({
+        normal: 'Normal',
+        high_hr: 'High heart rate',
+        low_hr: 'Low heart rate',
+        low_spo2: 'Low SpO₂',
+        fall: 'Fall detected',
+        low_battery: 'Low battery'
+      })[this.activeMode] || 'Normal')
+    },
+    selectedLayerData () {
+      return this.architectureLayers[this.selectedLayer]
+    },
+    presenterStep () {
+      return this.presenterSteps[this.presenterIndex]
+    },
+    livePacket () {
+      return JSON.stringify({
+        deviceId: this.telemetry.deviceId,
+        seq: this.telemetry.seq,
+        heartRate: this.telemetry.heartRate,
+        spo2: this.telemetry.spo2,
+        steps: this.telemetry.steps,
+        battery: this.telemetry.battery,
+        fallDetected: this.telemetry.fallDetected,
+        signalQuality: this.telemetry.signalQuality,
+        mode: this.telemetry.mode
+      }, null, 2)
+    },
+    rgbState () {
+      if (!this.isOnline) return 'blue'
+      if (this.telemetry.fallDetected || this.activeMode === 'fall') return 'red'
+      if (this.activeMode === 'normal') return 'green'
+      return 'amber'
+    },
+    rgbStateLabel () {
+      return this.tr(({ blue: 'BLUE', red: 'RED', green: 'GREEN', amber: 'AMBER' })[this.rgbState])
+    },
+    buzzerState () {
+      if (this.activeMode === 'fall') return this.tr('CRITICAL')
+      return this.activeMode === 'normal' ? this.tr('STANDBY') : this.tr('BEEP')
+    },
+    signalText () {
+      const value = String(this.telemetry.signalQuality || 'unknown')
+      return this.tr(({ good: 'Good', medium: 'Medium', poor: 'Poor', unknown: 'Unknown' })[value] || 'Unknown')
+    },
+    statusTitle () {
+      if (!this.isOnline) return this.tr('Device is offline')
+      if (this.telemetry.fallDetected) return this.tr('Fall detected')
+      if (this.telemetry.heartRate > 120) return this.tr('Heart rate is above the demo range')
+      if (this.telemetry.heartRate > 0 && this.telemetry.heartRate < 50) return this.tr('Heart rate is below the demo range')
+      if (this.telemetry.spo2 > 0 && this.telemetry.spo2 < 94) return this.tr('Blood oxygen is below the demo range')
+      if (this.telemetry.battery <= 20) return this.tr('Device battery is low')
+      return this.tr('Readings look normal')
+    },
+    statusDescription () {
+      if (!this.isOnline) return this.tr('No telemetry has been received in the last 8 seconds.')
+      if (this.activeAlerts.length) return this.tr('Review the active alert details below.')
+      return this.tr('No simulated health alerts require attention right now.')
+    },
+    statusTone () {
+      if (!this.isOnline || this.telemetry.fallDetected) return 'critical'
+      return this.activeAlerts.length ? 'warning' : 'healthy'
+    },
+    statusIcon () {
+      if (!this.isOnline) return 'mdi-cloud-off-outline'
+      if (this.telemetry.fallDetected) return 'mdi-alert-octagon-outline'
+      return this.activeAlerts.length ? 'mdi-alert-circle-outline' : 'mdi-check-circle-outline'
+    },
+    heartRateState () {
+      if (!this.telemetry.heartRate) return { label: this.tr('Waiting'), tone: 'neutral' }
+      if (this.telemetry.heartRate > 120) return { label: this.tr('High'), tone: 'bad' }
+      if (this.telemetry.heartRate < 50) return { label: this.tr('Low'), tone: 'bad' }
+      return { label: this.tr('In range'), tone: 'good' }
+    },
+    oxygenState () {
+      if (!this.telemetry.spo2) return { label: this.tr('Waiting'), tone: 'neutral' }
+      return this.telemetry.spo2 < 94 ? { label: this.tr('Low'), tone: 'bad' } : { label: this.tr('In range'), tone: 'good' }
+    },
+    batteryState () {
+      if (!this.isOnline) return { label: this.tr('Unknown'), tone: 'neutral' }
+      return this.telemetry.battery <= 20 ? { label: this.tr('Low'), tone: 'bad' } : { label: this.tr('Good'), tone: 'good' }
+    },
+    activeAlerts () {
+      const t = this.telemetry
+      const alerts = []
+      if (!this.isOnline) alerts.push({ code: 'offline', severity: 'critical', title: this.tr('Device offline'), detail: this.tr('No telemetry received for more than 8 seconds.') })
+      if (t.fallDetected) alerts.push({ code: 'fall', severity: 'critical', title: this.tr('Fall detected'), detail: this.tr('The simulated fall event has been triggered.') })
+      if (t.heartRate > 120) alerts.push({ code: 'high-hr', severity: 'warning', title: this.tr('High heart rate'), detail: this.language === 'vi' ? `${t.heartRate} BPM vượt ngưỡng demo 120 BPM.` : `${t.heartRate} BPM exceeds the 120 BPM demo threshold.` })
+      if (t.heartRate > 0 && t.heartRate < 50) alerts.push({ code: 'low-hr', severity: 'warning', title: this.tr('Low heart rate'), detail: this.language === 'vi' ? `${t.heartRate} BPM thấp hơn ngưỡng demo 50 BPM.` : `${t.heartRate} BPM is below the 50 BPM demo threshold.` })
+      if (t.spo2 > 0 && t.spo2 < 94) alerts.push({ code: 'low-spo2', severity: 'warning', title: this.tr('Low blood oxygen'), detail: this.language === 'vi' ? `${t.spo2}% thấp hơn ngưỡng demo 94%.` : `${t.spo2}% is below the 94% demo threshold.` })
+      if (this.isOnline && t.battery <= 20) alerts.push({ code: 'battery', severity: 'warning', title: this.tr('Low battery'), detail: this.language === 'vi' ? `Pin còn ${t.battery}%.` : `${t.battery}% battery remaining.` })
+      return alerts
+    },
+    heartRatePoints () {
+      return this.makePoints('heartRate', 35, 155)
+    },
+    spo2Points () {
+      return this.makePoints('spo2', 80, 100)
+    }
+  },
+  mounted () {
+    document.documentElement.lang = this.language
+    this.consumeMessage(this.msg)
+    this.socketHandler = message => this.consumeMessage(message)
+    this.$socket.on('msg-input:' + this.id, this.socketHandler)
+    const requestedView = new URLSearchParams(window.location.search).get('view')
+    if (['overview', 'twin', 'architecture', 'presenter', 'guide'].includes(requestedView)) {
+      this.activeView = requestedView
+    }
+    this.clock = setInterval(() => { this.now = Date.now() }, 1000)
+  },
+  unmounted () {
+    clearInterval(this.clock)
+    if (this.journeyTimer) clearInterval(this.journeyTimer)
+    if (this.socketHandler) this.$socket.off('msg-input:' + this.id, this.socketHandler)
+  },
+  methods: {
+    tr (text) {
+      if (this.language !== 'vi') return text
+      return this.viTranslations[text] || text
+    },
+    setLanguage (language) {
+      this.language = language
+      localStorage.setItem('healthBandLanguage', language)
+      document.documentElement.lang = language
+    },
+    consumeMessage (message) {
+      let value = message && message.payload
+      if (!value) return
+      try { if (typeof value === 'string') value = JSON.parse(value) } catch (error) { return }
+      if (!value || typeof value !== 'object') return
+
+      if (message.kind === 'alert') {
+        this.recordActivity(
+          'Rules',
+          value.type || 'Health alert',
+          value.message || 'Node-RED threshold rule triggered',
+          value.severity === 'critical' ? 'rejected' : 'processing'
+        )
+        return
+      }
+
+      if (message.kind === 'event' || value.eventType) {
+        this.lastAcknowledgement = value.message || value.eventType
+        if (value.activeMode) this.activeMode = value.activeMode
+        this.recordActivity(
+          'Device',
+          value.eventType || 'Device event',
+          `${value.message || 'Event received'}${value.activeMode ? ` · Mode: ${value.activeMode}` : ''}`,
+          value.eventType === 'COMMAND_REJECTED' ? 'rejected' : 'device'
+        )
+        return
+      }
+
+      if (message.kind === 'status' || Object.prototype.hasOwnProperty.call(value, 'online')) {
+        this.recordActivity(
+          'Network',
+          value.online ? 'Device connected' : 'Device disconnected',
+          `Firmware ${value.firmwareVersion || 'unknown'} · Mode ${value.activeMode || 'unknown'}`,
+          'network'
+        )
+        if (value.activeMode) this.activeMode = value.activeMode
+        return
+      }
+
+      if (!Number.isFinite(Number(value.heartRate))) return
+      const previousMode = this.telemetry.mode
+      this.telemetry = {
+        deviceId: value.deviceId || 'health-band-01',
+        heartRate: Number(value.heartRate),
+        spo2: Number(value.spo2),
+        steps: Number(value.steps),
+        battery: Number(value.battery),
+        fallDetected: value.fallDetected === true,
+        signalQuality: value.signalQuality || 'unknown',
+        seq: Number(value.seq || 0),
+        mode: value.mode || this.activeMode
+      }
+      if (value.mode) this.activeMode = value.mode
+      this.lastSeen = Date.now()
+      this.now = this.lastSeen
+      this.history.push({ heartRate: this.telemetry.heartRate, spo2: this.telemetry.spo2 })
+      if (this.history.length > 40) this.history.shift()
+      if (previousMode && previousMode !== this.telemetry.mode) {
+        this.recordActivity('Telemetry', 'Device mode updated', `Telemetry confirms mode ${this.telemetry.mode}`, 'telemetry')
+      }
+    },
+    recordActivity (source, title, detail, sourceClass) {
+      this.activity.unshift({
+        id: ++this.activityId,
+        time: new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date()),
+        source,
+        title,
+        detail,
+        sourceClass
+      })
+      if (this.activity.length > 30) this.activity.pop()
+    },
+    makePoints (key, minimum, maximum) {
+      if (!this.history.length) return ''
+      const range = maximum - minimum
+      const count = Math.max(this.history.length - 1, 1)
+      return this.history.map((item, index) => {
+        const x = (index / count) * 760
+        const normalized = Math.max(0, Math.min(1, (Number(item[key]) - minimum) / range))
+        return `${x.toFixed(1)},${(138 - normalized * 126).toFixed(1)}`
+      }).join(' ')
+    },
+    sendMode (mode) {
+      this.activeMode = mode
+      const requestId = `dashboard-${Date.now()}`
+      this.commandState = `Sent - ${this.activeModeLabel}`
+      this.recordActivity('Application', 'Command sent', `setMode = ${mode} · ${requestId}`, 'application')
+      this.send({ dashboardCommand: true, payload: { requestId, command: 'setMode', value: mode } })
+      setTimeout(() => { this.commandState = 'Ready' }, 1800)
+    },
+    resetSteps () {
+      const requestId = `dashboard-${Date.now()}`
+      this.commandState = 'Sent - Reset steps'
+      this.recordActivity('Application', 'Command sent', `resetSteps · ${requestId}`, 'application')
+      this.send({ dashboardCommand: true, payload: { requestId, command: 'resetSteps' } })
+      setTimeout(() => { this.commandState = 'Ready' }, 1800)
+    },
+    playDataJourney () {
+      if (this.journeyTimer) clearInterval(this.journeyTimer)
+      this.journeyRunning = true
+      this.journeyStep = 0
+      this.selectedLayer = 0
+      this.recordActivity('Application', 'Data journey started', 'Following telemetry through all four IoT layers', 'application')
+      this.journeyTimer = setInterval(() => {
+        if (this.journeyStep >= 3) {
+          clearInterval(this.journeyTimer)
+          this.journeyRunning = false
+          return
+        }
+        this.journeyStep++
+        this.selectedLayer = this.journeyStep
+      }, 1300)
+    },
+    previousPresenterStep () {
+      if (this.presenterIndex > 0) this.presenterIndex--
+    },
+    nextPresenterStep () {
+      if (this.presenterIndex < this.presenterSteps.length - 1) this.presenterIndex++
+    },
+    runPresenterStep () {
+      const step = this.presenterStep
+      this.recordActivity('Presenter', `Step ${this.presenterIndex + 1}: ${step.title}`, step.description, 'presenter')
+      if (step.mode) {
+        this.sendMode(step.mode)
+      } else if (step.action === 'journey') {
+        this.activeView = 'architecture'
+        this.playDataJourney()
+      } else if (step.action === 'view-twin') {
+        this.activeView = 'twin'
+      }
+    }
+  }
+}
+</script>
+
+<style>
+.health-app {
+  --ink: #18202b;
+  --muted: #667085;
+  --line: #e3e8ef;
+  --surface: #ffffff;
+  --page: #f5f7fa;
+  --blue: #2f6fed;
+  --heart: #d83b5d;
+  --oxygen: #138a9b;
+  --green: #22875a;
+  --amber: #b87503;
+  --red: #c33d42;
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.health-app * { box-sizing: border-box; }
+.app-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin: 2px 0 22px; }
+.brand { display: flex; align-items: center; gap: 13px; }
+.brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid #d8e2f2; border-radius: 11px; color: var(--blue); background: #f1f6ff; }
+.brand h1 { margin: 0; font-size: 24px; font-weight: 700; letter-spacing: -.03em; }
+.brand p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+.header-meta { display: flex; align-items: center; gap: 18px; color: var(--muted); font-size: 12px; }
+.language-switch { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+.language-switch button { display: flex; align-items: center; gap: 5px; padding: 5px 8px; border: 0; border-radius: 6px; color: #667085; background: transparent; font-size: 9px; font-weight: 650; cursor: pointer; }
+.language-switch button:hover { color: #245fac; background: #f4f7fb; }
+.language-switch button.active { color: #184f99; background: #eaf2ff; box-shadow: inset 0 0 0 1px #c8daf6; }
+.language-switch .flag { font-size: 16px; line-height: 1; }
+.connection { display: flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: #7a3033; background: #fff; font-weight: 600; }
+.connection i, .mini-dot { width: 7px; height: 7px; border-radius: 50%; background: #d55b60; }
+.connection.online { color: #236b4b; }
+.connection.online i, .mini-dot.online { background: #32a36d; }
+.status-summary { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 16px; padding: 18px 20px; border: 1px solid #d9eadf; border-left: 4px solid var(--green); border-radius: 12px; background: #f6fbf8; }
+.status-summary.warning { border-color: #f0dfbb; border-left-color: var(--amber); background: #fffaf0; }
+.status-summary.critical { border-color: #f0d2d3; border-left-color: var(--red); background: #fff7f7; }
+.status-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--green); background: #e6f4ec; }
+.warning .status-icon { color: var(--amber); background: #fff0ce; }
+.critical .status-icon { color: var(--red); background: #fde7e8; }
+.status-copy span, .last-sync span { color: var(--muted); font-size: 11px; }
+.status-copy h2 { margin: 2px 0 1px; font-size: 18px; font-weight: 700; }
+.status-copy p { margin: 0; color: var(--muted); font-size: 12px; }
+.last-sync { padding-left: 20px; border-left: 1px solid #dce5df; text-align: right; }
+.last-sync span, .last-sync strong { display: block; }
+.last-sync strong { margin-top: 3px; font-size: 12px; }
+.section-block { margin-top: 26px; }
+.section-title { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 13px; }
+.section-title h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+.section-title p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.metric-card, .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 2px 8px rgba(24,32,43,.035); }
+.metric-card { padding: 17px; }
+.metric-head { display: flex; align-items: center; gap: 9px; color: #4d5a6c; font-size: 12px; font-weight: 600; }
+.metric-icon { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 8px; }
+.metric-icon.heart { color: var(--heart); background: #fceef1; }
+.metric-icon.oxygen { color: var(--oxygen); background: #eaf7f8; }
+.metric-icon.steps { color: #5f68a9; background: #f0f1fa; }
+.metric-icon.battery { color: var(--green); background: #edf7f1; }
+.metric-reading { display: flex; align-items: baseline; gap: 7px; margin: 16px 0 13px; }
+.metric-reading strong { font-size: 35px; font-weight: 690; line-height: 1; letter-spacing: -.04em; }
+.metric-reading small { color: var(--muted); font-size: 11px; font-weight: 600; }
+.metric-foot { display: flex; justify-content: space-between; gap: 8px; color: #8a94a3; font-size: 9px; }
+.metric-foot > span:first-child { font-weight: 700; }
+.metric-foot .good { color: var(--green); }
+.metric-foot .bad { color: var(--red); }
+.metric-foot .neutral { color: #637083; }
+.battery-bar { height: 4px; margin: -3px 0 10px; overflow: hidden; border-radius: 4px; background: #ebeff3; }
+.battery-bar i { display: block; height: 100%; border-radius: inherit; background: var(--green); transition: width .25s ease; }
+.content-grid { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(270px,.65fr); gap: 14px; margin-top: 14px; }
+.panel { padding: 18px; }
+.panel-title { align-items: center; margin-bottom: 14px; }
+.chart-legend { display: flex; gap: 14px; color: var(--muted); font-size: 10px; }
+.chart-legend span { display: flex; align-items: center; gap: 5px; }
+.chart-legend i { width: 14px; height: 2px; border-radius: 2px; }
+.heart-line { background: var(--heart); }
+.oxygen-line { background: var(--oxygen); }
+.trend-row { display: grid; grid-template-columns: 125px minmax(0,1fr); align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #edf0f4; }
+.trend-label span, .trend-label strong, .trend-label small { display: block; }
+.trend-label span { color: var(--muted); font-size: 10px; }
+.trend-label strong { margin-top: 4px; font-size: 20px; }
+.trend-label small { display: inline; color: var(--muted); font-size: 9px; font-weight: 600; }
+.chart-wrap svg { display: block; width: 100%; height: 105px; overflow: visible; }
+.grid-line { stroke: #edf0f4; stroke-width: 1; }
+.data-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.heart-data { stroke: var(--heart); }
+.oxygen-data { stroke: var(--oxygen); }
+.detail-list { margin: 0; }
+.detail-list > div { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-top: 1px solid #edf0f4; }
+.detail-list dt { color: var(--muted); font-size: 10px; }
+.detail-list dd { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 11px; font-weight: 600; text-align: right; }
+.device-note { display: flex; gap: 8px; margin-top: 12px; padding: 11px; border-radius: 8px; color: #56657a; background: #f5f7fa; font-size: 9px; line-height: 1.45; }
+.lower-grid { grid-template-columns: minmax(0,1.35fr) minmax(300px,.75fr); }
+.command-status { padding: 5px 8px; border-radius: 6px; color: #305ea8; background: #edf4ff; font-size: 9px; font-weight: 700; }
+.scenario-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+.scenario-grid button { display: flex; align-items: center; gap: 9px; min-height: 56px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 9px; color: #3d4959; background: #fff; text-align: left; cursor: pointer; transition: border-color .15s, background .15s; }
+.scenario-grid button:hover { border-color: #afbfda; background: #f8faff; }
+.scenario-grid button.selected { border-color: #739be9; background: #f2f6ff; box-shadow: inset 0 0 0 1px #739be9; }
+.scenario-grid button > .v-icon { color: #6b7890; }
+.scenario-grid button.critical-button > .v-icon { color: var(--red); }
+.scenario-grid strong, .scenario-grid small { display: block; }
+.scenario-grid strong { font-size: 10px; }
+.scenario-grid small { margin-top: 2px; color: #8a94a3; font-size: 8px; }
+.reset-button { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; margin-top: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; color: #526071; background: #f8f9fb; font-size: 10px; font-weight: 600; cursor: pointer; }
+.alert-count { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 50%; color: var(--red); background: #fdecee; font-size: 10px; font-weight: 700; }
+.alert-list { display: grid; gap: 7px; }
+.alert-item { display: flex; gap: 9px; padding: 10px; border: 1px solid #eedfbf; border-radius: 8px; color: #8a5c00; background: #fffbf2; }
+.alert-item.critical { border-color: #efd4d5; color: var(--red); background: #fff7f7; }
+.alert-item strong, .alert-item p { margin: 0; }
+.alert-item strong { display: block; font-size: 10px; }
+.alert-item p { margin-top: 2px; color: #7d7164; font-size: 8px; line-height: 1.4; }
+.clear-state { display: flex; gap: 10px; padding: 13px; border: 1px solid #dcecdf; border-radius: 9px; color: var(--green); background: #f7fbf8; }
+.clear-state strong, .clear-state p { margin: 0; }
+.clear-state strong { font-size: 11px; }
+.clear-state p { margin-top: 2px; color: #667b6f; font-size: 8px; line-height: 1.4; }
+.medical-note { margin: 13px 0 0; padding-top: 11px; border-top: 1px solid #edf0f4; color: #929aa6; font-size: 8px; line-height: 1.45; }
+.view-tabs { display: flex; gap: 4px; margin: -7px 0 20px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.view-tabs button { display: flex; align-items: center; justify-content: center; gap: 6px; flex: 1; padding: 9px 12px; border: 0; border-radius: 7px; color: #687487; background: transparent; font-size: 11px; font-weight: 650; cursor: pointer; }
+.view-tabs button:hover { color: #2e5fae; background: #f5f8fc; }
+.view-tabs button.active { color: #235ebf; background: #eaf2ff; }
+.interactive-view { min-height: 850px; }
+.view-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; padding: 4px 1px; }
+.view-heading > div > span, .layer-kicker, .presenter-label { color: #5075ad; font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.view-heading h2 { margin: 3px 0; font-size: 22px; }
+.view-heading p { margin: 0; color: var(--muted); font-size: 11px; }
+.overview-activity, .presenter-activity { margin-top: 14px; }
+.event-total, .step-counter { padding: 6px 9px; border-radius: 7px; color: #3e6299; background: #edf3fb; font-size: 9px; font-weight: 700; }
+.activity-list { display: grid; }
+.activity-row { display: grid; grid-template-columns: 68px 76px minmax(0,1fr); align-items: start; gap: 10px; padding: 9px 0; border-top: 1px solid #edf0f4; }
+.activity-time { color: #8a94a3; font-size: 9px; font-variant-numeric: tabular-nums; }
+.activity-source { padding: 3px 5px; border-radius: 5px; color: #516070; background: #eef1f4; font-size: 8px; font-weight: 700; text-align: center; }
+.activity-source.device { color: #2a6c4e; background: #eaf5ef; }
+.activity-source.network { color: #176b7b; background: #e9f5f7; }
+.activity-source.application { color: #315fa8; background: #edf3fd; }
+.activity-source.presenter { color: #6b4ba3; background: #f1ecf9; }
+.activity-source.rejected { color: #a53b40; background: #fae9ea; }
+.activity-row strong { display: block; font-size: 10px; }
+.activity-row p { margin: 2px 0 0; color: var(--muted); font-size: 8px; }
+.empty-activity { padding: 18px 0; color: #8a94a3; font-size: 10px; text-align: center; }
+.twin-layout { display: grid; grid-template-columns: minmax(450px,1.25fr) minmax(320px,.75fr); gap: 14px; }
+.band-lab { min-height: 650px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle at 50% 42%, #ffffff 0, #f7f9fc 42%, #edf1f6 100%); }
+.band-stage { position: relative; display: flex; flex-direction: column; align-items: center; min-height: 520px; }
+.watch-shadow { position: absolute; bottom: 28px; width: 280px; height: 38px; border-radius: 50%; background: rgba(30,38,50,.16); filter: blur(17px); }
+.watch-strap { z-index: 1; width: 138px; height: 150px; border: 1px solid #232932; background: linear-gradient(90deg, #262d36, #3b424b 45%, #242a32); }
+.strap-top { border-radius: 42px 42px 12px 12px; transform: perspective(280px) rotateX(-4deg); }
+.strap-bottom { border-radius: 12px 12px 48px 48px; transform: perspective(280px) rotateX(5deg); }
+.watch-body { position: relative; z-index: 2; width: 292px; height: 238px; margin: -6px 0; padding: 17px; border: 8px solid #21262d; border-radius: 48px; background: #11161d; box-shadow: 0 18px 35px rgba(20,27,35,.26), inset 0 0 0 1px #505761; }
+.watch-body.warning { border-color: #5d4a24; }
+.watch-body.critical { border-color: #6b292d; }
+.watch-crown { position: absolute; right: -17px; top: 74px; width: 10px; height: 48px; border-radius: 0 6px 6px 0; background: #353c45; }
+.watch-screen { height: 100%; padding: 12px 14px; border-radius: 31px; color: #f4f7fb; background: linear-gradient(160deg, #111b27, #07101a); overflow: hidden; }
+.watch-status { display: flex; justify-content: space-between; color: #9ab0c7; font-size: 9px; font-weight: 700; }
+.watch-status span { display: flex; align-items: center; gap: 3px; }
+.watch-time { margin: 7px 0 8px; font-size: 27px; font-weight: 300; letter-spacing: .02em; }
+.watch-vitals { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.watch-vitals > div { display: grid; grid-template-columns: auto 1fr; align-items: center; padding: 9px; border-radius: 12px; background: rgba(255,255,255,.07); }
+.watch-vitals .v-icon { grid-row: 1 / span 2; margin-right: 6px; color: #ff6680; }
+.watch-vitals > div:last-child .v-icon { color: #42c6d8; }
+.watch-vitals strong { font-size: 24px; line-height: 1; }
+.watch-vitals small { color: #8ea3ba; font-size: 8px; }
+.watch-footer { display: flex; align-items: center; gap: 5px; margin-top: 10px; padding-top: 9px; border-top: 1px solid rgba(255,255,255,.1); color: #c2d0de; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.device-led { position: absolute; right: 24px; bottom: 19px; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 10px currentColor; }
+.device-led.green { color: #42d786; background: #42d786; }
+.device-led.amber { color: #f3b342; background: #f3b342; }
+.device-led.red { color: #f25b64; background: #f25b64; }
+.device-led.blue { color: #4ba8ff; background: #4ba8ff; }
+.band-actions { z-index: 3; display: flex; gap: 8px; margin-top: 16px; }
+.band-actions button, .journey-button { display: flex; align-items: center; gap: 6px; padding: 9px 12px; border: 1px solid #cad4e1; border-radius: 8px; color: #455468; background: #fff; font-size: 10px; font-weight: 650; cursor: pointer; }
+.band-actions .sos-action { border-color: #e4b3b6; color: #a93339; background: #fff7f7; }
+.twin-side { display: grid; gap: 14px; }
+.output-list { display: grid; }
+.output-list > div { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 11px 0; border-top: 1px solid #edf0f4; }
+.output-icon { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 8px; color: #4d6790; background: #eef3f9; }
+.output-list strong { display: block; font-size: 10px; }
+.output-list p { margin: 2px 0 0; color: var(--muted); font-size: 8px; line-height: 1.4; }
+.output-list b { color: #43705a; font-size: 8px; }
+.output-list b.red { color: var(--red); }
+.output-list b.amber { color: var(--amber); }
+.output-list b.blue { color: #3275ba; }
+.causal-panel ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.causal-panel li { display: flex; align-items: center; gap: 8px; color: #7b8696; font-size: 9px; }
+.causal-panel li span { display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #d9e0e8; border-radius: 50%; background: #fafbfc; font-size: 8px; }
+.causal-panel li.done { color: #286c4e; font-weight: 650; }
+.causal-panel li.done span { border-color: #b9dfca; color: #1f7d54; background: #ebf7f0; }
+.ack-box { margin-top: 13px; padding: 11px; border-radius: 8px; background: #f4f6f9; }
+.ack-box span, .ack-box strong { display: block; }
+.ack-box span { color: var(--muted); font-size: 8px; }
+.ack-box strong { margin-top: 3px; font-size: 9px; line-height: 1.4; }
+.journey-button { color: #285fae; border-color: #b8ccee; background: #f3f7fe; }
+.architecture-flow { position: relative; display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 14px; }
+.layer-card { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: flex-start; min-height: 155px; padding: 16px; border: 1px solid var(--line); border-radius: 11px; color: #394657; background: #fff; text-align: left; cursor: pointer; }
+.layer-card .layer-number { position: absolute; right: 13px; top: 11px; color: #a1a9b4; font-size: 9px; font-weight: 700; }
+.layer-card .v-icon { margin-bottom: 20px; color: #5e7190; }
+.layer-card strong { font-size: 12px; }
+.layer-card small { margin-top: 4px; color: var(--muted); font-size: 9px; }
+.layer-card.selected { border-color: #6f96d8; box-shadow: inset 0 0 0 1px #6f96d8; }
+.layer-card.pulse { animation: layerPulse 1.2s ease infinite; }
+.layer-card.device .v-icon { color: #5966aa; }
+.layer-card.network .v-icon { color: #14889b; }
+.layer-card.processing .v-icon { color: #b27609; }
+.layer-card.application .v-icon { color: #3773cb; }
+.flow-line { position: absolute; z-index: 1; left: 8%; right: 8%; top: 66px; height: 3px; background: #dfe5ec; }
+.flow-line i { display: block; height: 100%; background: linear-gradient(90deg, #6978bf, #1594a5, #cc8a13, #3773cb); transition: width .6s ease; }
+@keyframes layerPulse { 50% { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(43,91,161,.14); } }
+.architecture-detail { display: grid; grid-template-columns: minmax(0,1.2fr) minmax(300px,.8fr); gap: 14px; }
+.selected-layer { padding: 22px; }
+.selected-layer h2 { margin: 4px 0 7px; font-size: 21px; }
+.layer-purpose { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.layer-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.layer-info-grid > div { padding: 12px; border: 1px solid #e7ebf0; border-radius: 9px; background: #fafbfc; }
+.layer-info-grid span, .layer-info-grid strong { display: block; }
+.layer-info-grid span { color: #7e8896; font-size: 8px; }
+.layer-info-grid strong { margin-top: 4px; font-size: 9px; line-height: 1.5; }
+.payload-panel pre { min-height: 230px; margin: 0; padding: 14px; overflow: auto; border-radius: 9px; color: #c9e6ff; background: #111a25; font: 9px/1.55 "Cascadia Code", Consolas, monospace; }
+.topic-chip { margin-top: 10px; padding: 9px 11px; border-radius: 8px; background: #f1f4f8; }
+.topic-chip span, .topic-chip strong { display: block; }
+.topic-chip span { color: var(--muted); font-size: 8px; }
+.topic-chip strong { margin-top: 2px; font-size: 9px; }
+.presenter-layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(300px,.7fr); gap: 14px; }
+.presenter-card { position: relative; overflow: hidden; padding: 28px; }
+.presenter-progress { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: #e8edf3; }
+.presenter-progress i { display: block; height: 100%; background: var(--blue); transition: width .3s ease; }
+.presenter-card h2 { margin: 6px 0 8px; font-size: 25px; }
+.presenter-card > p { max-width: 700px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.audience-prompt { display: flex; gap: 11px; margin-top: 20px; padding: 14px; border-left: 3px solid #597fc0; border-radius: 0 9px 9px 0; color: #355b92; background: #f2f6fc; }
+.audience-prompt span, .audience-prompt strong { display: block; }
+.audience-prompt span { font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.audience-prompt strong { margin-top: 4px; font-size: 11px; }
+.expected-result { margin-top: 12px; padding: 13px 14px; border-radius: 9px; background: #f6f8fa; }
+.expected-result span { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.expected-result p { margin: 4px 0 0; font-size: 10px; line-height: 1.5; }
+.presenter-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 20px; }
+.presenter-actions button { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 110px; padding: 9px 12px; border: 1px solid #d5dde7; border-radius: 8px; color: #526174; background: #fff; font-size: 9px; font-weight: 650; cursor: pointer; }
+.presenter-actions button:disabled { opacity: .4; cursor: default; }
+.presenter-actions .run-step { flex: 1; color: #fff; border-color: #2f6fed; background: #2f6fed; }
+.proof-reading { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-top: 1px solid #edf0f4; }
+.proof-reading span { color: var(--muted); font-size: 9px; }
+.proof-reading strong { font-size: 10px; text-align: right; }
+.presenter-activity { margin-top: 14px; }
+.guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
+.guide-card { display: grid; grid-template-columns: 42px minmax(0,1fr); align-content: start; gap: 12px; min-height: 330px; }
+.guide-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 11px; color: #2f6fed; background: #edf4ff; }
+.guide-card > div:nth-child(2) > span { color: #64748b; font-size: 8px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.guide-card h2 { margin: 3px 0 6px; font-size: 18px; }
+.guide-card > div:nth-child(2) > p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.guide-card ul { grid-column: 1 / -1; display: grid; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.guide-card li { display: flex; align-items: flex-start; gap: 7px; color: #475467; font-size: 9px; line-height: 1.45; }
+.guide-card li .v-icon { flex: 0 0 auto; color: #299565; }
+.guide-demo { grid-column: 1 / -1; padding: 11px 12px; border-radius: 8px; color: #3a5478; background: #f2f6fb; }
+.guide-demo strong { display: block; font-size: 9px; }
+.guide-demo p { margin: 4px 0 0; font-size: 9px; line-height: 1.5; }
+.guide-card > button { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 12px; border: 1px solid #c7d6eb; border-radius: 8px; color: #285da5; background: #fff; font-size: 9px; font-weight: 700; cursor: pointer; }
+.glossary-panel { margin-top: 14px; }
+.glossary-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; }
+.glossary-grid > div { padding: 12px; border: 1px solid #e5eaf0; border-radius: 9px; background: #fafbfc; }
+.glossary-grid strong { display: block; font-size: 10px; }
+.glossary-grid p { margin: 4px 0 0; color: var(--muted); font-size: 9px; line-height: 1.45; }
+@media (max-width: 1050px) {
+  .metric-grid { grid-template-columns: repeat(2,1fr); }
+  .content-grid, .lower-grid { grid-template-columns: 1fr; }
+  .twin-layout, .architecture-detail, .presenter-layout { grid-template-columns: 1fr; }
+  .guide-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 680px) {
+  .app-header, .header-meta { align-items: flex-start; flex-direction: column; }
+  .header-meta { gap: 8px; }
+  .status-summary { grid-template-columns: auto 1fr; }
+  .last-sync { grid-column: 2; padding: 0; border: 0; text-align: left; }
+  .metric-grid, .scenario-grid { grid-template-columns: 1fr; }
+  .trend-row { grid-template-columns: 1fr; }
+  .chart-legend { display: none; }
+  .view-tabs { display: grid; grid-template-columns: 1fr 1fr; }
+  .language-switch { width: 100%; }
+  .language-switch button { justify-content: center; flex: 1; }
+  .architecture-flow { grid-template-columns: 1fr 1fr; }
+  .flow-line { display: none; }
+  .layer-info-grid { grid-template-columns: 1fr; }
+  .activity-row { grid-template-columns: 58px 68px minmax(0,1fr); }
+  .presenter-actions { flex-wrap: wrap; }
+  .glossary-grid { grid-template-columns: 1fr; }
+}
+</style>

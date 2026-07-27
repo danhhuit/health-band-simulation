@@ -1,38 +1,41 @@
-# Quy ước phối hợp
+# Quy ước phối hợp nhóm
 
-## Nhánh
+## Nhánh làm việc
 
-- Thành Danh: `feature/danh-integration-mqtt`
-- Hồng Vỹ: `feature/vy-health-data`
-- Minh Thiện: `feature/thien-wokwi-controls`
-- Lê Hậu: `feature/hau-node-red-dashboard`
+| Thành viên | Nhánh đề xuất |
+|---|---|
+| Thành Danh | `feature/danh-integration-mqtt` |
+| Hồng Vỹ | `feature/vy-health-data` |
+| Minh Thiện | `feature/thien-wokwi-controls` |
+| Lê Hậu | `feature/hau-node-red-dashboard` |
 
-Không lập trình trực tiếp trên `main` sau commit khởi tạo.
+Không sửa trực tiếp `main` khi làm thay đổi lớn. Trước khi bắt đầu, cập nhật nhánh hiện tại từ `main`.
 
 ## Commit
 
-Sử dụng tiền tố:
-
-- `feat:` chức năng mới.
-- `fix:` sửa lỗi.
-- `docs:` cập nhật tài liệu.
-- `test:` thêm hoặc cập nhật kiểm thử.
-- `chore:` cấu hình và công việc bảo trì.
-
-Ví dụ:
+Sử dụng tiền tố rõ ràng:
 
 ```text
-feat: publish telemetry qua MQTT
-fix: chong doi nut FALL
-docs: bo sung schema JSON
-test: them ca canh bao SpO2 thap
+feat: add fall event acknowledgement
+fix: reconnect mqtt after wifi loss
+docs: update deployment guide
+test: add dashboard language test
+chore: update docker image
 ```
 
-## Review
+## Quy trình thay đổi an toàn
 
-1. Pull nhánh `main` mới nhất trước khi bắt đầu.
-2. Chỉ commit các tệp thuộc nhiệm vụ của mình.
-3. Push nhánh cá nhân và gửi cho người review chéo.
-4. Không merge nếu chưa có bằng chứng chạy được.
-5. Không commit mật khẩu, token hoặc thông tin cá nhân.
+1. Chỉ sửa các file thuộc phần việc được giao.
+2. Nếu đổi topic hoặc payload, cập nhật **cùng pull request**: firmware, `node-red/mqtt-topics.md`, JSON schema và test.
+3. Build firmware hoặc kiểm tra Node-RED tương ứng.
+4. Chụp ảnh/log làm bằng chứng nếu thay đổi ảnh hưởng demo.
+5. Không commit mật khẩu, token, dữ liệu sức khỏe thật, `node_modules` hoặc `.pio` build artifact.
 
+## Review tối thiểu
+
+Người review cần kiểm tra:
+
+- Tên topic/payload có đúng hợp đồng MQTT không.
+- Dashboard không làm mất luồng command/event.
+- Wokwi build được.
+- Tài liệu đã cập nhật nếu thay đổi ảnh hưởng cách cài hoặc demo.
