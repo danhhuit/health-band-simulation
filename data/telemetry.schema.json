@@ -12,7 +12,8 @@
     "steps",
     "fallDetected",
     "battery",
-    "signalQuality"
+    "signalQuality",
+    "mode"
   ],
   "properties": {
     "deviceId": {
@@ -52,6 +53,10 @@
     "signalQuality": {
       "type": "string",
       "enum": ["good", "medium", "poor"]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
     }
   }
 }

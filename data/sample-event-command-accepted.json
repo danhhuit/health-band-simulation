@@ -1,0 +1,10 @@
+{
+  "deviceId": "health-band-01",
+  "eventType": "COMMAND_ACCEPTED",
+  "requestId": "dashboard-001",
+  "command": "setMode",
+  "value": "high_hr",
+  "activeMode": "high_hr",
+  "timestamp": 25000,
+  "message": "Scenario changed"
+}

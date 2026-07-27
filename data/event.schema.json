@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Health Band Device Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "deviceId",
+    "eventType",
+    "requestId",
+    "command",
+    "activeMode",
+    "timestamp",
+    "message"
+  ],
+  "properties": {
+    "deviceId": {
+      "type": "string",
+      "const": "health-band-01"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "DEVICE_STARTED",
+        "COMMAND_ACCEPTED",
+        "COMMAND_REJECTED",
+        "LOCAL_FALL_BUTTON"
+      ]
+    },
+    "requestId": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "value": {
+      "type": "string"
+    },
+    "activeMode": {
+      "type": "string",
+      "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

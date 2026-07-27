@@ -1,86 +1,188 @@
-# Đồ án 31 - Vòng tay theo dõi sức khỏe mô phỏng
+# Health Band Simulation — Đề tài 31
 
-## Mục tiêu
+Mô phỏng vòng tay theo dõi sức khỏe cá nhân cho môn IoTs. Dự án sử dụng **ESP32 trên Wokwi**, **MQTT**, **Node-RED Dashboard 2.0** và không yêu cầu mua linh kiện thật.
 
-Xây dựng một hệ thống IoT mô phỏng vòng tay theo dõi sức khỏe cá nhân. Thiết bị ESP32 ảo sinh dữ liệu nhịp tim, SpO2, số bước, trạng thái té ngã và pin; dữ liệu được gửi qua MQTT đến Node-RED để kiểm tra, lưu trữ, cảnh báo và hiển thị.
+> Lưu ý: dữ liệu nhịp tim, SpO₂ và cảnh báo trong dự án là dữ liệu mô phỏng phục vụ học tập; ứng dụng không phải thiết bị y tế và không dùng để chẩn đoán.
 
-Đồ án không yêu cầu mua linh kiện và không phải thiết bị y tế.
+## 1. Dự án thể hiện điều gì?
 
-## Kiến trúc
+Hệ thống mô phỏng một vòng tay có thể:
 
-Hệ thống sử dụng kiến trúc IoT 4 tầng:
+- Sinh nhịp tim, SpO₂, số bước, pin, tín hiệu và trạng thái té ngã.
+- Gửi dữ liệu qua Wi-Fi/MQTT mỗi **2 giây**.
+- Hiển thị OLED, LED RGB, còi và nút FALL/SOS ngay trên Wokwi.
+- Phân tích dữ liệu bằng Node-RED, tạo cảnh báo và phát hiện offline sau 8 giây không nhận telemetry.
+- Hiển thị Dashboard tương tác, mô hình vòng tay số, kiến trúc IoT 4 tầng, chế độ thuyết trình và hướng dẫn trong ứng dụng.
 
-1. Thiết bị: ESP32 và cảm biến/điều khiển ảo trên Wokwi.
-2. Mạng: Wi-Fi mô phỏng và giao thức MQTT.
-3. Xử lý: MQTT Broker và Node-RED.
-4. Ứng dụng: dashboard, lịch sử và cảnh báo.
-
-## Công cụ
-
-- Wokwi và ESP32 ảo.
-- MQTT Broker.
-- Node-RED.
-- Git và GitHub.
-
-## Cấu trúc repository
-
-- `firmware-wokwi`: mã ESP32 và sơ đồ Wokwi.
-- `node-red`: Node-RED Flow và ghi chú cấu hình.
-- `dashboard`: thiết kế giao diện và ảnh kết quả.
-- `data`: schema và dữ liệu JSON/CSV mô phỏng.
-- `tests`: ca kiểm thử và bằng chứng.
-- `demo`: kịch bản demo và video dự phòng.
-- `TASKS.md`: bảng phân công và tiến độ.
-- `DOCUMENTATION.md`: quy ước lưu tài liệu ngoài repository.
-
-## Vị trí tài liệu
-
-Tài liệu khảo sát, sơ đồ, biên bản và báo cáo được lưu tại workspace cục bộ:
+## 2. Kiến trúc 4 tầng
 
 ```text
-..\..\tailieu\do-an-31\docs
+Tầng 4 — Ứng dụng: Dashboard, Digital Twin, Presenter mode, App guide
+                         ↑↓ MQTT command / telemetry / alert / event
+Tầng 3 — Xử lý: Node-RED parse JSON, cảnh báo, offline, timeline
+                         ↑↓ MQTT
+Tầng 2 — Mạng: Wi-Fi Wokwi-GUEST + broker.emqx.io:1883
+                         ↑↓ MQTT
+Tầng 1 — Thiết bị: ESP32 Wokwi + OLED + RGB LED + buzzer + FALL/SOS
 ```
 
-Đường dẫn này nằm ngoài repository mã nguồn nên không được Git của repository này theo dõi. Xem `DOCUMENTATION.md` để biết cách quản lý.
+Giải thích chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md).
 
-## MQTT topic prefix
+## 3. Cài đặt nhanh (lần đầu)
+
+### Điều kiện cần
+
+- Windows 10/11, Internet ổn định.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) đang chạy.
+- VS Code, extension **PlatformIO IDE** và **Wokwi Simulator**.
+- Tài khoản/giấy phép Wokwi hợp lệ nếu extension yêu cầu.
+- Cổng `1880` chưa bị ứng dụng khác dùng.
+
+### Bước 1 — Mở đúng thư mục
+
+Mở thư mục gốc này trong VS Code:
 
 ```text
-iot31/nhom-thanh-danh/health-band
+D:\IOTs\projects\health-band-simulation
 ```
 
-Các topic dự kiến:
+### Bước 2 — Build firmware ESP32
+
+Mở PowerShell tại thư mục gốc và chạy:
+
+```powershell
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --project-dir ".\firmware-wokwi"
+```
+
+Kết quả mong đợi: cuối log có dòng `[SUCCESS]`.
+
+### Bước 3 — Khởi động Node-RED
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Kết quả mong đợi: container `health-band-node-red` có trạng thái `healthy`.
+
+### Bước 4 — Tạo và deploy Dashboard flow
+
+```powershell
+node .\node-red\build-english-dashboard.js
+curl.exe -sS -X POST -H "Content-Type: application/json" --data-binary "@node-red/data/flows.json" http://localhost:1880/flows
+```
+
+Mở:
+
+- Node-RED Editor: <http://localhost:1880>
+- Dashboard: <http://localhost:1880/dashboard/overview>
+
+### Bước 5 — Chạy Wokwi
+
+1. Trong VS Code, mở Command Palette (`Ctrl+Shift+P`).
+2. Chọn `Wokwi: Start Simulation`.
+3. Đợi ESP32 kết nối Wi-Fi/MQTT; LED trạng thái nháy chậm khi đã kết nối.
+4. Quay lại Dashboard và nhấn `Ctrl+F5` nếu chưa thấy dữ liệu.
+
+Sau mỗi lần build firmware mới, hãy **Stop Simulation** rồi **Start Simulation** để Wokwi nạp file `.bin` mới.
+
+## 4. Dùng Dashboard
+
+Dashboard có 5 trang, chuyển bằng các tab ở đầu trang:
+
+| Trang | Dùng để làm gì? |
+|---|---|
+| **Overview** | Xem HR, SpO₂, bước, pin, tín hiệu, biểu đồ, cảnh báo và timeline. |
+| **Digital twin** | Quan sát chiếc vòng tay số hiển thị cùng dữ liệu với ESP32 Wokwi. |
+| **IoT architecture** | Giải thích 4 tầng và nút `Play data journey`. |
+| **Presenter mode** | Thuyết trình theo kịch bản, có câu hỏi cho người xem. |
+| **App guide** | Xem giải thích từng trang và chức năng ngay trong ứng dụng. |
+
+Ở góc đầu Dashboard có hai lựa chọn ngôn ngữ: **🇻🇳 Tiếng Việt** và **🇺🇸 English**. Lựa chọn được lưu sau khi tải lại trang.
+
+### Các tình huống demo
+
+| Nút | Tác động mô phỏng |
+|---|---|
+| `Normal` | HR 70–90, SpO₂ 97–99, không té ngã. |
+| `High HR` | HR 125–145 và cảnh báo nhịp tim cao. |
+| `Low HR` | HR 40–48 và cảnh báo nhịp tim thấp. |
+| `Low SpO₂` | SpO₂ 85–92 và cảnh báo oxy máu thấp. |
+| `Fall` | Té ngã, LED đỏ, còi và cảnh báo critical. |
+| `Low battery` | Pin 12–19% và cảnh báo pin yếu. |
+| `Reset steps` | Đặt số bước về 0. |
+
+## 5. MQTT dùng chung
 
 ```text
-iot31/nhom-thanh-danh/health-band/telemetry
-iot31/nhom-thanh-danh/health-band/status
-iot31/nhom-thanh-danh/health-band/command
-iot31/nhom-thanh-danh/health-band/alert
+Broker: broker.emqx.io:1883
+Prefix: iot31/nhom-thanh-danh/health-band
+Device ID: health-band-01
 ```
 
-Hợp đồng MQTT chính thức, gồm publisher/subscriber, QoS, retain, payload và ca kiểm thử, nằm tại [`node-red/mqtt-topics.md`](node-red/mqtt-topics.md).
+| Topic cuối | Hướng | Mục đích |
+|---|---|---|
+| `telemetry` | ESP32 → Node-RED | Số đo và trạng thái mô phỏng. |
+| `status` | ESP32 → Node-RED | Online/offline, retained. |
+| `command` | Dashboard/Node-RED → ESP32 | `setMode`, `resetSteps`. |
+| `event` | ESP32 → Node-RED | Xác nhận lệnh, FALL/SOS cục bộ. |
+| `alert` | Node-RED → Dashboard | Cảnh báo từ rule xử lý. |
 
-Payload và JSON Schema dùng chung:
+Xem payload, QoS và các lệnh mẫu tại [node-red/mqtt-topics.md](node-red/mqtt-topics.md).
 
-- [`data/sample-telemetry.json`](data/sample-telemetry.json) và [`data/telemetry.schema.json`](data/telemetry.schema.json).
-- [`data/sample-status-online.json`](data/sample-status-online.json), [`data/sample-status-offline.json`](data/sample-status-offline.json) và [`data/status.schema.json`](data/status.schema.json).
-- [`data/sample-command-set-mode.json`](data/sample-command-set-mode.json), [`data/sample-command-reset-steps.json`](data/sample-command-reset-steps.json) và [`data/command.schema.json`](data/command.schema.json).
-- [`data/sample-alert.json`](data/sample-alert.json) và [`data/alert.schema.json`](data/alert.schema.json).
+## 6. Kiểm tra nhanh
 
-## Mốc kỹ thuật đầu tiên
+```powershell
+# Kiểm tra container
+docker compose ps
 
-Hoàn thành đường truyền tối thiểu:
+# Xem log Node-RED/MQTT
+docker logs --tail 60 health-band-node-red
+
+# Build lại firmware
+& "$env:USERPROFILE\.platformio\penv\Scripts\platformio.exe" run --project-dir ".\firmware-wokwi"
+```
+
+Danh sách lỗi thường gặp và cách xử lý: [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+## 7. Tài liệu theo nhu cầu
+
+| Khi cần | Đọc tệp |
+|---|---|
+| Cài đặt/khởi động chi tiết | [DEPLOYMENT.md](DEPLOYMENT.md) |
+| Lỗi Wokwi, Docker, MQTT, Dashboard | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) |
+| Giải thích kiến trúc 4 tầng | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Firmware ESP32/Wokwi | [firmware-wokwi/README.md](firmware-wokwi/README.md) |
+| Flow và topic MQTT | [node-red/mqtt-topics.md](node-red/mqtt-topics.md) |
+| Payload/JSON schema | [data/README.md](data/README.md) |
+| Demo trước giảng viên | [demo/INTERACTIVE_DEMO_GUIDE.md](demo/INTERACTIVE_DEMO_GUIDE.md) |
+| Kiểm thử và ảnh bằng chứng | [tests/STAGE_4_TEST_GUIDE.md](tests/STAGE_4_TEST_GUIDE.md) |
+| Phân công nhóm | [TASKS.md](TASKS.md) |
+| Tài liệu Word/Excel ngoài repo | [DOCUMENTATION.md](DOCUMENTATION.md) |
+
+## 8. Cấu trúc thư mục
 
 ```text
-ESP32 ảo trên Wokwi -> MQTT Broker -> Node-RED Debug
+health-band-simulation/
+├── firmware-wokwi/      # ESP32, PlatformIO, sơ đồ Wokwi
+├── node-red/            # Dockerfile, flow, template Dashboard, MQTT contract
+├── data/                # JSON mẫu và JSON Schema
+├── demo/                # kịch bản demo và script chạy tình huống
+├── tests/               # hướng dẫn test và ảnh/log bằng chứng
+├── dashboard/           # ghi chú giao diện
+├── ARCHITECTURE.md
+├── DEPLOYMENT.md
+├── TROUBLESHOOTING.md
+└── README.md
 ```
 
-Chỉ chuyển sang làm dashboard khi Node-RED nhận và phân tích đúng bản tin JSON.
+## 9. Trạng thái hiện tại và giới hạn
 
-## Cách bắt đầu
+MVP đã chạy được end-to-end và có Dashboard song ngữ. Tuy nhiên đây vẫn là mô phỏng môn học:
 
-1. Mỗi thành viên chuyển sang đúng nhánh của mình.
-2. Đọc `TASKS.md` và README trong module phụ trách.
-3. Làm một thay đổi nhỏ, kiểm tra và commit trên nhánh cá nhân.
-4. Push nhánh và nhờ người được phân công review.
-5. Chỉ merge vào `main` khi đã có bằng chứng chạy được.
+- Chưa dùng cảm biến y tế thật, pin/sạc thật hoặc người đeo thật.
+- Broker hiện là public và không dùng TLS/xác thực; không gửi dữ liệu cá nhân thật.
+- Chưa hỗ trợ nhiều thiết bị đồng thời hoặc kiểm thử tải/dài ngày.
+- Các ngưỡng HR/SpO₂ chỉ là ngưỡng demo.
+
+Kết quả test chi tiết nằm trong `D:\IOTs\tailieu26\TestCase_VongTayTheoDoiSucKhoe_DaChay_2026-07-28.xlsx`.

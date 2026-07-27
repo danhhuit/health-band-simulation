@@ -22,6 +22,12 @@ config.local.*
 node_modules/
 .node-red/
 node-red/flows_cred.json
+node-red/data/flows_cred.json
+node-red/data/.config.runtime.json
+
+# Dữ liệu runtime của Docker
+mosquitto/data/
+mosquitto/log/
 
 # Tệp xuất hoặc bản sao lưu cục bộ
 *.bak
@@ -29,3 +35,11 @@ node-red/flows_cred.json
 
 # PlatformIO build artifacts
 .pio/
+
+# Local browser profiles used for dashboard visual QA
+.chrome-dashboard-qa*/
+.edge-dashboard-qa*/
+
+# Temporary Node-RED deployment responses
+deploy-response.txt
+deploy-test.txt
