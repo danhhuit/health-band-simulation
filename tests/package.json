@@ -1,0 +1,12 @@
+{
+  "name": "health-band-e2e-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:smart": "node smart-features-e2e.mjs",
+    "test:header": "node header-features-e2e.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.54.0"
+  }
+}

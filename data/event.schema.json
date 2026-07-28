@@ -9,6 +9,8 @@
     "requestId",
     "command",
     "activeMode",
+    "profile",
+    "powerMode",
     "timestamp",
     "message"
   ],
@@ -38,6 +40,14 @@
     "activeMode": {
       "type": "string",
       "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
+    },
+    "profile": {
+      "type": "string",
+      "enum": ["student", "older_adult", "athlete"]
+    },
+    "powerMode": {
+      "type": "string",
+      "enum": ["normal", "eco"]
     },
     "timestamp": {
       "type": "integer",

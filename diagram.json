@@ -103,8 +103,8 @@
     }
   ],
   "connections": [
-    ["esp32:TX0", "$serialMonitor:RX", "", []],
-    ["esp32:RX0", "$serialMonitor:TX", "", []],
+    ["esp32:17", "$serialMonitor:RX", "", []],
+    ["esp32:16", "$serialMonitor:TX", "", []],
 
     ["oled:VCC", "esp32:3V3", "red", []],
     ["oled:GND", "esp32:GND.1", "black", []],
@@ -131,7 +131,8 @@
   ],
   "dependencies": {},
   "serialMonitor": {
-    "display": "terminal",
+    "display": "always",
+    "collapse": false,
     "newline": "lf",
     "convertEol": true
   }

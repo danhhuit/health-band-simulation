@@ -1,5 +1,56 @@
 # Troubleshooting — Health Band Simulation
 
+## Dashboard báo Disconnected dù Docker đang chạy
+
+`Disconnected` trên Dashboard có nghĩa là **không nhận telemetry từ ESP32**, không có nghĩa Docker bị tắt.
+
+Các nguyên nhân đã được sửa trong phiên bản hiện tại:
+
+1. Payload telemetry F1–F12 lớn hơn MQTT buffer mặc định 256 byte. Firmware hiện gọi `mqttClient.setBufferSize(768)`.
+2. Eco mode gửi mỗi 8 giây nhưng ngưỡng offline cũ cũng là 8 giây. Dashboard/Node-RED hiện dùng timeout động, tối thiểu 12 giây.
+3. Firmware publish status heartbeat mỗi 30 giây để ghi đè retained offline cũ.
+
+Sau khi build bản mới, bắt buộc nạp lại simulator:
+
+1. Bấm nút hình vuông để **Stop Simulation**.
+2. Chờ 2 giây.
+3. Nhấn `Ctrl+Shift+P`.
+4. Chọn `Wokwi: Start Simulator`.
+5. Giữ tab Wokwi Simulator hiển thị trong lúc ESP32 khởi động.
+6. Nhấn `Ctrl+F5` tại Dashboard.
+
+Dấu hiệu đúng: OLED ghi `MQTT`, Dashboard chuyển `Connected`, HR/SpO₂/battery khác 0.
+
+## Wokwi Terminal trống
+
+Firmware dùng UART2 riêng:
+
+```text
+ESP32 GPIO17 (TX2) -> $serialMonitor:RX
+ESP32 GPIO16 (RX2) -> $serialMonitor:TX
+Baud rate: 115200
+```
+
+`diagram.json` dùng `serialMonitor.display = "always"`. Thay đổi dây chỉ có hiệu lực sau **Stop → Start Simulation**; nút Reset màu xanh không bảo đảm nạp lại sơ đồ.
+
+Sau khi reload, Terminal phải có:
+
+```text
+=== HEALTH BAND DIGITAL TWIN v0.3.0 ===
+[MQTT] Buffer size: 768
+[WiFi] Connecting... connected
+[MQTT] Connected and subscribed
+[TELEMETRY] {...}
+[DIAG] WiFi=connected MQTT=connected ...
+```
+
+Nếu webview Wokwi Terminal vẫn lỗi:
+
+1. Nhấn `Ctrl+Shift+P` → `Tasks: Run Task`.
+2. Chọn `Health Band: Wokwi Serial Monitor`.
+
+Hoặc chọn `Health Band: Live MQTT Log`. Task này không phụ thuộc webview và phải in `[STATUS] ONLINE` cùng `[TELEMETRY]` mỗi 2 giây.
+
 ## 1. Docker / Node-RED
 
 ### `docker compose up` lỗi hoặc Docker chưa chạy

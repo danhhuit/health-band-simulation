@@ -6,6 +6,10 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+// Dedicated UART2 keeps Wokwi serial output independent from ESP32 UART0/boot logs.
+HardwareSerial WokwiSerial(2);
+#define Serial WokwiSerial
+
 // Health Band digital-twin firmware
 // Architecture: Device -> MQTT -> Node-RED -> Interactive application
 
@@ -17,12 +21,18 @@ constexpr uint8_t BUZZER_PIN = 18;
 constexpr uint8_t FALL_BUTTON_PIN = 19;
 constexpr uint8_t OLED_SDA_PIN = 21;
 constexpr uint8_t OLED_SCL_PIN = 22;
+constexpr uint8_t SERIAL_RX_PIN = 16;
+constexpr uint8_t SERIAL_TX_PIN = 17;
 
 constexpr unsigned long BLINK_FAST_MS = 200;
 constexpr unsigned long BLINK_SLOW_MS = 1000;
-constexpr unsigned long TELEMETRY_INTERVAL_MS = 2000;
+constexpr unsigned long LIVE_TELEMETRY_INTERVAL_MS = 2000;
+constexpr unsigned long ECO_TELEMETRY_INTERVAL_MS = 8000;
 constexpr unsigned long RECONNECT_INTERVAL_MS = 5000;
+constexpr unsigned long DIAGNOSTIC_INTERVAL_MS = 5000;
+constexpr unsigned long STATUS_HEARTBEAT_INTERVAL_MS = 30000;
 constexpr unsigned long BUTTON_DEBOUNCE_MS = 250;
+constexpr uint16_t MQTT_BUFFER_SIZE = 768;
 
 const char* WIFI_SSID = "Wokwi-GUEST";
 const char* WIFI_PASS = "";
@@ -32,7 +42,7 @@ const char* MQTT_HOST = "broker.emqx.io";
 constexpr uint16_t MQTT_PORT = 1883;
 
 const char* DEVICE_ID = "health-band-01";
-const char* FW_VERSION = "0.2.0";
+const char* FW_VERSION = "0.3.0";
 
 const char* TOPIC_TELEMETRY = "iot31/nhom-thanh-danh/health-band/telemetry";
 const char* TOPIC_STATUS = "iot31/nhom-thanh-danh/health-band/status";
@@ -48,6 +58,17 @@ enum SimMode {
   MODE_LOW_BATTERY
 };
 
+enum UserProfile {
+  PROFILE_STUDENT,
+  PROFILE_OLDER_ADULT,
+  PROFILE_ATHLETE
+};
+
+enum PowerMode {
+  POWER_LIVE,
+  POWER_ECO
+};
+
 struct HealthData {
   int heartRate;
   int spo2;
@@ -56,6 +77,8 @@ struct HealthData {
 };
 
 SimMode currentMode = MODE_NORMAL;
+UserProfile currentProfile = PROFILE_STUDENT;
+PowerMode selectedPowerMode = POWER_LIVE;
 unsigned long sequenceNumber = 0;
 unsigned long steps = 0;
 int battery = 100;
@@ -65,6 +88,8 @@ unsigned long lastTelemetryMs = 0;
 unsigned long lastBlinkMs = 0;
 unsigned long lastReconnectMs = 0;
 unsigned long lastButtonMs = 0;
+unsigned long lastDiagnosticMs = 0;
+unsigned long lastStatusMs = 0;
 bool statusLedState = false;
 bool mqttConnected = false;
 bool oledReady = false;
@@ -101,6 +126,29 @@ static const char* modeShortName(SimMode mode) {
   }
 }
 
+static const char* profileName(UserProfile profile) {
+  switch (profile) {
+    case PROFILE_STUDENT: return "student";
+    case PROFILE_OLDER_ADULT: return "older_adult";
+    case PROFILE_ATHLETE: return "athlete";
+    default: return "student";
+  }
+}
+
+static const char* powerModeName(PowerMode mode) {
+  return mode == POWER_ECO ? "eco" : "normal";
+}
+
+static PowerMode effectivePowerMode() {
+  return battery <= 20 ? POWER_ECO : selectedPowerMode;
+}
+
+static unsigned long telemetryIntervalMs() {
+  return effectivePowerMode() == POWER_ECO
+    ? ECO_TELEMETRY_INTERVAL_MS
+    : LIVE_TELEMETRY_INTERVAL_MS;
+}
+
 static bool parseMode(const char* value, SimMode& result) {
   if (!value) return false;
   if (strcmp(value, "normal") == 0) result = MODE_NORMAL;
@@ -109,6 +157,23 @@ static bool parseMode(const char* value, SimMode& result) {
   else if (strcmp(value, "low_spo2") == 0) result = MODE_LOW_SPO2;
   else if (strcmp(value, "fall") == 0) result = MODE_FALL;
   else if (strcmp(value, "low_battery") == 0) result = MODE_LOW_BATTERY;
+  else return false;
+  return true;
+}
+
+static bool parseProfile(const char* value, UserProfile& result) {
+  if (!value) return false;
+  if (strcmp(value, "student") == 0) result = PROFILE_STUDENT;
+  else if (strcmp(value, "older_adult") == 0) result = PROFILE_OLDER_ADULT;
+  else if (strcmp(value, "athlete") == 0) result = PROFILE_ATHLETE;
+  else return false;
+  return true;
+}
+
+static bool parsePowerMode(const char* value, PowerMode& result) {
+  if (!value) return false;
+  if (strcmp(value, "normal") == 0) result = POWER_LIVE;
+  else if (strcmp(value, "eco") == 0) result = POWER_ECO;
   else return false;
   return true;
 }
@@ -211,6 +276,7 @@ static void renderDisplay() {
   display.setTextColor(SSD1306_BLACK);
   display.setCursor(3, 54);
   display.print(modeShortName(currentMode));
+  if (effectivePowerMode() == POWER_ECO) display.print(" ECO");
   if (latestData.fallDetected) display.print("  ALERT");
   display.display();
 }
@@ -228,6 +294,8 @@ static void publishEvent(const char* eventType,
   doc["command"] = command ? command : "";
   if (value && strlen(value)) doc["value"] = value;
   doc["activeMode"] = modeName(currentMode);
+  doc["profile"] = profileName(currentProfile);
+  doc["powerMode"] = powerModeName(effectivePowerMode());
   doc["timestamp"] = millis();
   doc["message"] = message;
   char buffer[384];
@@ -238,13 +306,16 @@ static void publishEvent(const char* eventType,
 }
 
 static void publishStatus(bool online) {
-  StaticJsonDocument<192> doc;
+  StaticJsonDocument<256> doc;
   doc["deviceId"] = DEVICE_ID;
   doc["online"] = online;
   doc["uptime"] = millis();
   doc["firmwareVersion"] = FW_VERSION;
   doc["activeMode"] = modeName(currentMode);
-  char buffer[192];
+  doc["profile"] = profileName(currentProfile);
+  doc["powerMode"] = powerModeName(effectivePowerMode());
+  doc["samplingIntervalMs"] = telemetryIntervalMs();
+  char buffer[256];
   size_t length = serializeJson(doc, buffer, sizeof(buffer));
   mqttClient.publish(TOPIC_STATUS, reinterpret_cast<const uint8_t*>(buffer), length, true);
 }
@@ -255,7 +326,7 @@ static void publishTelemetry() {
   if (sequenceNumber % 20 == 0 && battery > 0) battery--;
   if (currentMode == MODE_LOW_BATTERY) battery = constrain(battery, 12, 19);
 
-  StaticJsonDocument<320> doc;
+  StaticJsonDocument<448> doc;
   doc["deviceId"] = DEVICE_ID;
   doc["timestamp"] = millis();
   doc["seq"] = sequenceNumber++;
@@ -266,8 +337,11 @@ static void publishTelemetry() {
   doc["battery"] = battery;
   doc["signalQuality"] = latestData.signalQuality;
   doc["mode"] = modeName(currentMode);
+  doc["profile"] = profileName(currentProfile);
+  doc["powerMode"] = powerModeName(effectivePowerMode());
+  doc["samplingIntervalMs"] = telemetryIntervalMs();
 
-  char buffer[320];
+  char buffer[448];
   size_t length = serializeJson(doc, buffer, sizeof(buffer));
   bool published = mqttClient.publish(
     TOPIC_TELEMETRY,
@@ -280,7 +354,10 @@ static void publishTelemetry() {
     Serial.print("[TELEMETRY] ");
     Serial.println(buffer);
   } else {
-    Serial.println("[MQTT] Telemetry publish failed");
+    Serial.print("[MQTT] Telemetry publish failed; payload=");
+    Serial.print(length);
+    Serial.print(" bytes, MQTT buffer=");
+    Serial.println(mqttClient.getBufferSize());
   }
   updateRgbState();
   renderDisplay();
@@ -306,6 +383,7 @@ static void handleCommand(const JsonDocument& doc) {
     updateRgbState();
     renderDisplay();
     publishEvent("COMMAND_ACCEPTED", requestId, command, value, "Scenario changed");
+    publishStatus(true);
     return;
   }
 
@@ -313,6 +391,70 @@ static void handleCommand(const JsonDocument& doc) {
     steps = 0;
     renderDisplay();
     publishEvent("COMMAND_ACCEPTED", requestId, command, "", "Step counter reset");
+    return;
+  }
+
+  if (strcmp(command, "setProfile") == 0) {
+    const char* value = doc["value"];
+    UserProfile requestedProfile;
+    if (!parseProfile(value, requestedProfile)) {
+      publishEvent("COMMAND_REJECTED", requestId, command, value, "Unsupported profile");
+      return;
+    }
+    currentProfile = requestedProfile;
+    renderDisplay();
+    publishEvent("COMMAND_ACCEPTED", requestId, command, value, "User profile changed");
+    publishStatus(true);
+    return;
+  }
+
+  if (strcmp(command, "setPowerMode") == 0) {
+    const char* value = doc["value"];
+    PowerMode requestedPowerMode;
+    if (!parsePowerMode(value, requestedPowerMode)) {
+      publishEvent("COMMAND_REJECTED", requestId, command, value, "Unsupported power mode");
+      return;
+    }
+    selectedPowerMode = requestedPowerMode;
+    lastTelemetryMs = 0;
+    renderDisplay();
+    publishEvent("COMMAND_ACCEPTED", requestId, command, value, "Power mode changed");
+    publishStatus(true);
+    return;
+  }
+
+  if (strcmp(command, "ackAlert") == 0) {
+    const char* value = doc["value"];
+    if (!value || strlen(value) == 0) {
+      publishEvent("COMMAND_REJECTED", requestId, command, "", "Missing alert code");
+      return;
+    }
+    publishEvent("COMMAND_ACCEPTED", requestId, command, value, "Alert acknowledged by presenter");
+    return;
+  }
+
+  if (strcmp(command, "emergencyAction") == 0) {
+    const char* value = doc["value"];
+    if (!value || (strcmp(value, "cancel") != 0 && strcmp(value, "send") != 0)) {
+      publishEvent("COMMAND_REJECTED", requestId, command, value, "Unsupported emergency action");
+      return;
+    }
+    if (strcmp(value, "cancel") == 0) {
+      currentMode = MODE_NORMAL;
+      playModeTone(currentMode);
+      updateRgbState();
+      renderDisplay();
+    }
+    publishEvent(
+      "COMMAND_ACCEPTED",
+      requestId,
+      command,
+      value,
+      strcmp(value, "cancel") == 0
+        ? "Simulated emergency cancelled"
+        : "Simulated emergency notification sent"
+    );
+    publishStatus(true);
     return;
   }
 
@@ -350,13 +492,16 @@ static void connectWiFi() {
 
 static bool connectMqtt() {
   String clientId = String(DEVICE_ID) + "-" + String(millis() % 100000);
-  StaticJsonDocument<192> lastWill;
+  StaticJsonDocument<256> lastWill;
   lastWill["deviceId"] = DEVICE_ID;
   lastWill["online"] = false;
   lastWill["uptime"] = 0;
   lastWill["firmwareVersion"] = FW_VERSION;
   lastWill["activeMode"] = modeName(currentMode);
-  char lastWillBuffer[192];
+  lastWill["profile"] = profileName(currentProfile);
+  lastWill["powerMode"] = powerModeName(effectivePowerMode());
+  lastWill["samplingIntervalMs"] = telemetryIntervalMs();
+  char lastWillBuffer[256];
   serializeJson(lastWill, lastWillBuffer, sizeof(lastWillBuffer));
 
   bool connected = mqttClient.connect(
@@ -371,6 +516,7 @@ static bool connectMqtt() {
     mqttConnected = true;
     mqttClient.subscribe(TOPIC_COMMAND, 1);
     publishStatus(true);
+    lastStatusMs = millis();
     publishEvent("DEVICE_STARTED", "", "", "", "Health Band connected");
     Serial.println("[MQTT] Connected and subscribed");
   } else {
@@ -395,9 +541,9 @@ static void handleFallButton(unsigned long now) {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(115200, SERIAL_8N1, SERIAL_RX_PIN, SERIAL_TX_PIN);
   delay(300);
-  Serial.println("\n=== HEALTH BAND DIGITAL TWIN v0.2.0 ===");
+  Serial.println("\n=== HEALTH BAND DIGITAL TWIN v0.3.0 ===");
 
   pinMode(STATUS_LED_PIN, OUTPUT);
   pinMode(RGB_R_PIN, OUTPUT);
@@ -422,7 +568,14 @@ void setup() {
   randomSeed(esp_random());
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
+  if (!mqttClient.setBufferSize(MQTT_BUFFER_SIZE)) {
+    Serial.println("[MQTT] ERROR: could not allocate 768-byte MQTT buffer");
+  } else {
+    Serial.print("[MQTT] Buffer size: ");
+    Serial.println(mqttClient.getBufferSize());
+  }
   mqttClient.setKeepAlive(15);
+  mqttClient.setSocketTimeout(10);
   connectWiFi();
   connectMqtt();
   renderDisplay();
@@ -440,6 +593,10 @@ void loop() {
     }
   } else {
     mqttClient.loop();
+    if (now - lastStatusMs >= STATUS_HEARTBEAT_INTERVAL_MS) {
+      lastStatusMs = now;
+      publishStatus(true);
+    }
   }
 
   unsigned long blinkInterval = mqttConnected ? BLINK_SLOW_MS : BLINK_FAST_MS;
@@ -451,7 +608,22 @@ void loop() {
 
   handleFallButton(now);
 
-  if (now - lastTelemetryMs >= TELEMETRY_INTERVAL_MS) {
+  if (now - lastDiagnosticMs >= DIAGNOSTIC_INTERVAL_MS) {
+    lastDiagnosticMs = now;
+    Serial.print("[DIAG] WiFi=");
+    Serial.print(WiFi.status() == WL_CONNECTED ? "connected" : "disconnected");
+    Serial.print(" MQTT=");
+    Serial.print(mqttClient.connected() ? "connected" : "disconnected");
+    Serial.print(" RSSI=");
+    Serial.print(WiFi.status() == WL_CONNECTED ? WiFi.RSSI() : 0);
+    Serial.print(" mode=");
+    Serial.print(modeName(currentMode));
+    Serial.print(" interval=");
+    Serial.print(telemetryIntervalMs());
+    Serial.println("ms");
+  }
+
+  if (now - lastTelemetryMs >= telemetryIntervalMs()) {
     lastTelemetryMs = now;
     publishTelemetry();
   }

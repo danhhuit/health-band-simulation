@@ -2,6 +2,9 @@
   "deviceId": "health-band-01",
   "online": true,
   "uptime": 15000,
-  "firmwareVersion": "0.2.0",
-  "activeMode": "normal"
+  "firmwareVersion": "0.3.0",
+  "activeMode": "normal",
+  "profile": "student",
+  "powerMode": "normal",
+  "samplingIntervalMs": 2000
 }

@@ -16,43 +16,60 @@
       "type": "string",
       "enum": [
         "setMode",
-        "resetSteps"
+        "resetSteps",
+        "setProfile",
+        "setPowerMode",
+        "ackAlert",
+        "emergencyAction"
       ]
     },
     "value": {
       "type": "string",
-      "enum": [
-        "normal",
-        "high_hr",
-        "low_hr",
-        "low_spo2",
-        "fall",
-        "low_battery"
-      ]
+      "minLength": 1
     }
   },
   "oneOf": [
     {
       "properties": {
-        "command": {
-          "const": "setMode"
+        "command": { "const": "setMode" },
+        "value": {
+          "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
         }
       },
-      "required": [
-        "value"
-      ]
+      "required": ["value"]
     },
     {
       "properties": {
-        "command": {
-          "const": "resetSteps"
-        }
+        "command": { "const": "resetSteps" }
       },
-      "not": {
-        "required": [
-          "value"
-        ]
-      }
+      "not": { "required": ["value"] }
+    },
+    {
+      "properties": {
+        "command": { "const": "setProfile" },
+        "value": { "enum": ["student", "older_adult", "athlete"] }
+      },
+      "required": ["value"]
+    },
+    {
+      "properties": {
+        "command": { "const": "setPowerMode" },
+        "value": { "enum": ["normal", "eco"] }
+      },
+      "required": ["value"]
+    },
+    {
+      "properties": {
+        "command": { "const": "ackAlert" }
+      },
+      "required": ["value"]
+    },
+    {
+      "properties": {
+        "command": { "const": "emergencyAction" },
+        "value": { "enum": ["cancel", "send"] }
+      },
+      "required": ["value"]
     }
   ]
 }

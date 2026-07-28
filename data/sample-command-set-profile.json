@@ -1,0 +1,5 @@
+{
+  "requestId": "demo-profile-001",
+  "command": "setProfile",
+  "value": "athlete"
+}

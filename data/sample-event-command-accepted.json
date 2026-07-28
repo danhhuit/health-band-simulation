@@ -5,6 +5,8 @@
   "command": "setMode",
   "value": "high_hr",
   "activeMode": "high_hr",
+  "profile": "student",
+  "powerMode": "normal",
   "timestamp": 25000,
   "message": "Scenario changed"
 }
