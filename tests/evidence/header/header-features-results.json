@@ -1,0 +1,44 @@
+[
+  {
+    "id": "HEADER-01",
+    "name": "Moon button enables dark theme",
+    "status": "PASS",
+    "detail": "Dark theme applied to app and outer Node-RED page"
+  },
+  {
+    "id": "HEADER-02",
+    "name": "Dark theme persists after reload",
+    "status": "PASS",
+    "detail": "healthBandTheme=dark persisted"
+  },
+  {
+    "id": "HEADER-03",
+    "name": "Notification bell opens center with unread badge",
+    "status": "PASS",
+    "detail": "badge=1; notifications=1"
+  },
+  {
+    "id": "HEADER-04",
+    "name": "Mark all notifications as read",
+    "status": "PASS",
+    "detail": "All notifications marked as read and badge hidden"
+  },
+  {
+    "id": "HEADER-05",
+    "name": "Clear notification list",
+    "status": "PASS",
+    "detail": "Notification empty state is visible"
+  },
+  {
+    "id": "HEADER-06",
+    "name": "Sun button restores light theme",
+    "status": "PASS",
+    "detail": "Light theme restored and persisted"
+  },
+  {
+    "id": "HEADER-07",
+    "name": "No browser errors",
+    "status": "PASS",
+    "detail": "No console or page errors"
+  }
+]

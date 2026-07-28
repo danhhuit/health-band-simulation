@@ -9,15 +9,15 @@ Mô phỏng vòng tay theo dõi sức khỏe cá nhân cho môn IoTs. Dự án s
 Hệ thống mô phỏng một vòng tay có thể:
 
 - Sinh nhịp tim, SpO₂, số bước, pin, tín hiệu và trạng thái té ngã.
-- Gửi dữ liệu qua Wi-Fi/MQTT mỗi **2 giây**.
+- Gửi dữ liệu qua Wi-Fi/MQTT mỗi **2 giây** ở Live mode hoặc **8 giây** ở Eco mode.
 - Hiển thị OLED, LED RGB, còi và nút FALL/SOS ngay trên Wokwi.
 - Phân tích dữ liệu bằng Node-RED, tạo cảnh báo và phát hiện offline sau 8 giây không nhận telemetry.
-- Hiển thị Dashboard tương tác, mô hình vòng tay số, kiến trúc IoT 4 tầng, chế độ thuyết trình và hướng dẫn trong ứng dụng.
+- Hiển thị Dashboard tương tác, mô hình vòng tay số, kiến trúc IoT 4 tầng, chế độ thuyết trình, Smart Coach và hướng dẫn trong ứng dụng.
 
 ## 2. Kiến trúc 4 tầng
 
 ```text
-Tầng 4 — Ứng dụng: Dashboard, Digital Twin, Presenter mode, App guide
+Tầng 4 — Ứng dụng: Dashboard, Digital Twin, Presenter, Smart Coach, App guide
                          ↑↓ MQTT command / telemetry / alert / event
 Tầng 3 — Xử lý: Node-RED parse JSON, cảnh báo, offline, timeline
                          ↑↓ MQTT
@@ -86,9 +86,11 @@ Mở:
 
 Sau mỗi lần build firmware mới, hãy **Stop Simulation** rồi **Start Simulation** để Wokwi nạp file `.bin` mới.
 
+Nếu Wokwi Terminal trống, chạy `Ctrl+Shift+P` → `Tasks: Run Task` → `Health Band: Live MQTT Log`. Chi tiết UART và cách sửa `Disconnected` nằm trong [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
 ## 4. Dùng Dashboard
 
-Dashboard có 5 trang, chuyển bằng các tab ở đầu trang:
+Dashboard có 6 trang, chuyển bằng các tab ở đầu trang:
 
 | Trang | Dùng để làm gì? |
 |---|---|
@@ -96,9 +98,37 @@ Dashboard có 5 trang, chuyển bằng các tab ở đầu trang:
 | **Digital twin** | Quan sát chiếc vòng tay số hiển thị cùng dữ liệu với ESP32 Wokwi. |
 | **IoT architecture** | Giải thích 4 tầng và nút `Play data journey`. |
 | **Presenter mode** | Thuyết trình theo kịch bản, có câu hỏi cho người xem. |
+| **Smart Coach** | Điểm sức khỏe giải thích được, mục tiêu bước tùy chỉnh, xu hướng, chất lượng dữ liệu, hồ sơ demo, Eco mode và demo tự động. |
 | **App guide** | Xem giải thích từng trang và chức năng ngay trong ứng dụng. |
 
 Ở góc đầu Dashboard có hai lựa chọn ngôn ngữ: **🇻🇳 Tiếng Việt** và **🇺🇸 English**. Lựa chọn được lưu sau khi tải lại trang.
+
+Header còn có:
+
+- **Chuông thông báo**: hiển thị badge số chưa đọc và tập hợp cảnh báo, thay đổi kết nối, event thiết bị, emergency và lỗi chất lượng dữ liệu. Có `Mark all as read` và `Clear`.
+- **Theme sáng/tối**: bấm biểu tượng mặt trăng để bật Dark mode; bấm mặt trời để trở lại Light mode. Theme được lưu trong `localStorage` và giữ nguyên sau khi reload.
+
+### Chức năng thông minh F1–F12
+
+| Mã | Chức năng | Cách chứng minh khi demo |
+|---|---|---|
+| F1 | Điểm sức khỏe 0–100 có giải thích | Mở Smart Coach và chỉ bốn nhóm điểm: vitals, safety, activity, device. |
+| F2 | Mục tiêu bước chân do người dùng tự đặt | Nhập mục tiêu 100–50.000 bước, bấm `Save goal`, reload trang và kiểm tra mục tiêu vẫn còn. |
+| F3 | Phân tích xu hướng 10 mẫu gần nhất | Quan sát trạng thái tăng/giảm/ổn định của HR, SpO₂ và bước. |
+| F4 | Xác nhận bất thường sau 3 mẫu liên tiếp | Chọn High HR/Low HR/Low SpO₂; bộ đếm chạy 1/3 → 3/3 rồi mới báo. |
+| F5 | Xác nhận đã xem cảnh báo | Ở Overview bấm `Acknowledge`; Dashboard gửi lệnh MQTT `ackAlert`. |
+| F6 | Quy trình té ngã có đếm ngược 10 giây | Chọn Fall, sau đó hủy bằng `I am safe` hoặc chờ gửi thông báo mô phỏng. |
+| F7 | Giám sát chất lượng dữ liệu | Kiểm tra trường bắt buộc, range, `seq`, timestamp và signal quality. |
+| F8 | Hồ sơ Student / Older adult / Athlete | Chọn profile để đổi ngưỡng cảnh báo demo và gợi ý vận động. |
+| F9 | Xuất báo cáo phiên JSON | Bấm `Export report` để tải dữ liệu, điểm, cảnh báo, profile và lịch sử. |
+| F10 | Live/Eco thích ứng | Live gửi mỗi 2 giây; Eco gửi mỗi 8 giây; pin ≤20% tự chuyển Eco trên thiết bị. |
+| F11 | Gợi ý sức khỏe không chẩn đoán | Smart Coach tạo gợi ý hành động kèm lưu ý không thay thế tư vấn y tế. |
+| F12 | So sánh Normal với Current | Bảng hiển thị baseline và độ chênh HR, SpO₂, steps, battery. |
+
+Hai tiện ích bổ sung:
+
+- **Guided smart demo** tự chạy Normal → High HR → Low SpO₂ → Fall → Low battery → Recovery bằng lệnh MQTT thật.
+- **Clear session** xóa lịch sử, cảnh báo, mục tiêu và profile lưu cục bộ để bắt đầu một phiên mới.
 
 ### Các tình huống demo
 
@@ -124,7 +154,7 @@ Device ID: health-band-01
 |---|---|---|
 | `telemetry` | ESP32 → Node-RED | Số đo và trạng thái mô phỏng. |
 | `status` | ESP32 → Node-RED | Online/offline, retained. |
-| `command` | Dashboard/Node-RED → ESP32 | `setMode`, `resetSteps`. |
+| `command` | Dashboard/Node-RED → ESP32 | `setMode`, `resetSteps`, `setProfile`, `setPowerMode`, `ackAlert`, `emergencyAction`. |
 | `event` | ESP32 → Node-RED | Xác nhận lệnh, FALL/SOS cục bộ. |
 | `alert` | Node-RED → Dashboard | Cảnh báo từ rule xử lý. |
 
@@ -178,7 +208,7 @@ health-band-simulation/
 
 ## 9. Trạng thái hiện tại và giới hạn
 
-MVP đã chạy được end-to-end và có Dashboard song ngữ. Tuy nhiên đây vẫn là mô phỏng môn học:
+Ứng dụng đã chạy end-to-end, có Dashboard song ngữ và Smart Coach F1–F12. Kiểm thử Smart Coach gần nhất đạt **16/16**; firmware v0.3.0 build thành công. Tuy nhiên đây vẫn là mô phỏng môn học:
 
 - Chưa dùng cảm biến y tế thật, pin/sạc thật hoặc người đeo thật.
 - Broker hiện là public và không dùng TLS/xác thực; không gửi dữ liệu cá nhân thật.

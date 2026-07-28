@@ -13,7 +13,10 @@
     "fallDetected",
     "battery",
     "signalQuality",
-    "mode"
+    "mode",
+    "profile",
+    "powerMode",
+    "samplingIntervalMs"
   ],
   "properties": {
     "deviceId": {
@@ -57,6 +60,18 @@
     "mode": {
       "type": "string",
       "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
+    },
+    "profile": {
+      "type": "string",
+      "enum": ["student", "older_adult", "athlete"]
+    },
+    "powerMode": {
+      "type": "string",
+      "enum": ["normal", "eco"]
+    },
+    "samplingIntervalMs": {
+      "type": "integer",
+      "enum": [2000, 8000]
     }
   }
 }

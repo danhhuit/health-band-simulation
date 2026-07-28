@@ -45,6 +45,48 @@ Một test chỉ ghi **Đạt** khi có thao tác tái hiện, kết quả quan 
 
 ## 5. Kiểm thử tự động đã có
 
+### Header, Notification Center và Theme
+
+Chạy:
+
+```powershell
+node .\tests\header-features-e2e.mjs
+```
+
+Kết quả mong đợi: `7/7 PASS`.
+
+Bằng chứng:
+
+- `tests/evidence/header/header-features-results.json`
+- `tests/evidence/header/dashboard-dark-theme.png`
+- `tests/evidence/header/dashboard-light-theme.png`
+- `tests/evidence/header/notification-center.png`
+
+### Smart Coach F1–F12
+
+Chạy:
+
+```powershell
+npm install --prefix .\tests
+node .\tests\smart-features-e2e.mjs
+```
+
+Máy hiện tại đã có Playwright trong môi trường Codex nên có thể chạy trực tiếp. Trên máy mới, chỉ cần chạy lệnh `npm install` một lần.
+
+Kết quả mong đợi:
+
+```text
+total: 16
+passed: 16
+failed: 0
+```
+
+Bằng chứng tự động:
+
+- `tests/evidence/smart/smart-features-results.json`
+- `tests/evidence/smart/smart-coach-desktop.png`
+- `tests/evidence/smart/smart-coach-mobile.png`
+
 Kịch bản E2E đã kiểm tra:
 
 - Dashboard tải được, 5 tab hiển thị.

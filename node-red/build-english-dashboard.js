@@ -61,22 +61,48 @@ for (const node of output) {
       break
     case 'json1':
       node.name = 'Parse Telemetry'
+      node.func = [
+        'var p=msg.payload;try{',
+        'if(Buffer.isBuffer(p))p=p.toString("utf8");',
+        'for(var i=0;i<2&&typeof p==="string";i++)p=JSON.parse(p);',
+        'if(!p||typeof p!=="object"||Array.isArray(p))throw new Error("Payload is not an object");',
+        'var w=[];var req=["deviceId","timestamp","seq","heartRate","spo2","steps","fallDetected","battery","signalQuality","mode"];',
+        'req.forEach(function(k){if(p[k]===undefined||p[k]===null)w.push("Missing required field: "+k);});',
+        'if(Number(p.heartRate)<40||Number(p.heartRate)>200)w.push("Heart rate is outside the supported 40-200 BPM range.");',
+        'if(Number(p.spo2)<70||Number(p.spo2)>100)w.push("SpO2 is outside the supported 70-100% range.");',
+        'if(Number(p.battery)<0||Number(p.battery)>100)w.push("Battery is outside the supported 0-100% range.");',
+        'if(Number(p.steps)<0)w.push("Step count cannot be negative.");',
+        'var sq=["good","medium","poor"];if(sq.indexOf(p.signalQuality)<0)w.push("Unknown signal-quality value.");',
+        'var key="dqseq_"+(p.deviceId||"unknown");var previous=global.get(key);',
+        'if(previous!==undefined&&Number(p.seq)<=Number(previous))w.push("Sequence is not newer than the previous packet.");',
+        'global.set(key,Number(p.seq));',
+        'msg.payload=p;msg.qualityWarnings=w;return msg;',
+        '}catch(e){node.warn("Telemetry JSON invalid: "+e.message,msg);return null;}'
+      ].join('')
       node.wires = [['dashboardUI', 'alert1', 'ts1']]
       break
     case 'ts1':
       node.name = 'Record Last Seen'
+      node.func = 'global.set("lts",Date.now());global.set("lti",Number((msg.payload||{}).samplingIntervalMs)||2000);return null;'
       break
     case 'alert1':
       node.name = 'Evaluate Alerts'
       node.func = [
-        'var d=msg.payload||{};var a=[];var ac=global.get("ac")||{};var n=Date.now();',
-        'if(d.heartRate>120)a.push({deviceId:d.deviceId,type:"HIGH_HEART_RATE",severity:"warning",value:d.heartRate,threshold:120,sourceSeq:d.seq,timestamp:n,message:"High heart rate: "+d.heartRate+" BPM"});',
-        'if(d.heartRate<50)a.push({deviceId:d.deviceId,type:"LOW_HEART_RATE",severity:"warning",value:d.heartRate,threshold:50,sourceSeq:d.seq,timestamp:n,message:"Low heart rate: "+d.heartRate+" BPM"});',
-        'if(d.spo2<94)a.push({deviceId:d.deviceId,type:"LOW_SPO2",severity:"warning",value:d.spo2,threshold:94,sourceSeq:d.seq,timestamp:n,message:"Low blood oxygen: "+d.spo2+"%"});',
+        'var d=msg.payload||{};var a=[];var ac=global.get("ac")||{};var counters=global.get("alertCounters")||{};var n=Date.now();',
+        'var profile=d.profile||global.get("healthProfile")||"student";',
+        'var thresholds={student:{high:120,low:50,spo2:94},older_adult:{high:110,low:50,spo2:94},athlete:{high:130,low:45,spo2:93}}[profile]||{high:120,low:50,spo2:94};',
+        'var key=d.deviceId||"health-band-01";var c=counters[key]||{high:0,low:0,spo2:0};',
+        'c.high=d.heartRate>thresholds.high?Math.min(3,c.high+1):0;',
+        'c.low=d.heartRate<thresholds.low?Math.min(3,c.low+1):0;',
+        'c.spo2=d.spo2<thresholds.spo2?Math.min(3,c.spo2+1):0;',
+        'counters[key]=c;global.set("alertCounters",counters);',
+        'if(c.high>=3)a.push({deviceId:d.deviceId,type:"HIGH_HEART_RATE",severity:"warning",value:d.heartRate,threshold:thresholds.high,sourceSeq:d.seq,timestamp:n,message:"High heart rate confirmed across 3 samples: "+d.heartRate+" BPM"});',
+        'if(c.low>=3)a.push({deviceId:d.deviceId,type:"LOW_HEART_RATE",severity:"warning",value:d.heartRate,threshold:thresholds.low,sourceSeq:d.seq,timestamp:n,message:"Low heart rate confirmed across 3 samples: "+d.heartRate+" BPM"});',
+        'if(c.spo2>=3)a.push({deviceId:d.deviceId,type:"LOW_SPO2",severity:"warning",value:d.spo2,threshold:thresholds.spo2,sourceSeq:d.seq,timestamp:n,message:"Low blood oxygen confirmed across 3 samples: "+d.spo2+"%"});',
         'if(d.fallDetected===true)a.push({deviceId:d.deviceId,type:"FALL_DETECTED",severity:"critical",value:true,threshold:null,sourceSeq:d.seq,timestamp:n,message:"Fall detected"});',
         'if(d.battery<=20)a.push({deviceId:d.deviceId,type:"LOW_BATTERY",severity:"warning",value:d.battery,threshold:20,sourceSeq:d.seq,timestamp:n,message:"Low battery: "+d.battery+"%"});',
-        'var k=d.deviceId+"_a";var c=JSON.stringify(a.map(function(x){return x.type;}).sort());',
-        'if(c===(ac[k]||""))return null;ac[k]=c;global.set("ac",ac);',
+        'var stateKey=d.deviceId+"_a";var state=JSON.stringify(a.map(function(x){return x.type;}).sort());',
+        'if(state===(ac[stateKey]||""))return null;ac[stateKey]=state;global.set("ac",ac);',
         'return a.length?[a.map(function(x){return{payload:x};})]:null;'
       ].join('')
       break
@@ -88,11 +114,11 @@ for (const node of output) {
       break
     case 'offFunc':
       node.name = 'Detect Offline Device'
-      node.func = 'var g=Date.now()-(global.get("lts")||0);if(g>8000&&global.get("ofs")!==true){global.set("ofs",true);var n=Date.now();return{payload:{deviceId:"health-band-01",type:"DEVICE_OFFLINE",severity:"critical",value:null,threshold:null,sourceSeq:0,timestamp:n,message:"Device offline"}};}if(g<=8000&&global.get("ofs")===true)global.set("ofs",false);return null;'
+      node.func = 'var interval=global.get("lti")||2000;var timeout=Math.max(12000,interval*2.5);var g=Date.now()-(global.get("lts")||0);if(g>timeout&&global.get("ofs")!==true){global.set("ofs",true);var n=Date.now();return{payload:{deviceId:"health-band-01",type:"DEVICE_OFFLINE",severity:"critical",value:null,threshold:timeout,sourceSeq:0,timestamp:n,message:"Device offline"}};}if(g<=timeout&&global.get("ofs")===true)global.set("ofs",false);return null;'
       break
     case 'cmdF':
       node.name = 'Prepare Command'
-      node.func = 'if(msg.dashboardCommand!==true||!msg.payload||!msg.payload.command)return null;return{payload:msg.payload,topic:"iot31/nhom-thanh-danh/health-band/command"};'
+      node.func = 'if(msg.dashboardCommand!==true||!msg.payload||!msg.payload.command)return null;if(msg.payload.command==="setProfile"&&msg.payload.value)global.set("healthProfile",msg.payload.value);return{payload:msg.payload,topic:"iot31/nhom-thanh-danh/health-band/command"};'
       break
     case 'cmdM':
       node.name = 'Publish Command'

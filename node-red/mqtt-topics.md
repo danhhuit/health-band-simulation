@@ -17,9 +17,9 @@ Broker này là broker **public chỉ dành cho demo**. Không gửi dữ liệu
 
 | Topic | Publisher | Subscriber | QoS | Retain | Khi nào dùng |
 |---|---|---|---:|---|---|
-| `.../telemetry` | ESP32 | Node-RED | 0 | Không | Mỗi 2 giây. |
+| `.../telemetry` | ESP32 | Node-RED | 0 | Không | 2 giây Live / 8 giây Eco. |
 | `.../status` | ESP32/LWT | Node-RED | 1 | Có | Online/offline. |
-| `.../command` | Dashboard → Node-RED | ESP32 | 1 | Không | Đổi mode/reset steps. |
+| `.../command` | Dashboard → Node-RED | ESP32 | 1 | Không | Scenario, profile, power, ack, emergency. |
 | `.../event` | ESP32 | Node-RED/Dashboard | 1 | Không | Xác nhận lệnh, FALL/SOS. |
 | `.../alert` | Node-RED | Dashboard | 1 | Không | Cảnh báo rule. |
 
@@ -44,7 +44,10 @@ iot31/nhom-thanh-danh/health-band/telemetry
   "fallDetected": false,
   "battery": 92,
   "signalQuality": "good",
-  "mode": "normal"
+  "mode": "normal",
+  "profile": "student",
+  "powerMode": "normal",
+  "samplingIntervalMs": 2000
 }
 ```
 
@@ -59,6 +62,9 @@ iot31/nhom-thanh-danh/health-band/telemetry
 | `battery` | integer | 0–100 %. |
 | `signalQuality` | string | `good`, `medium`, hoặc `poor`. |
 | `mode` | string | Mode hiện tại. |
+| `profile` | string | `student`, `older_adult`, hoặc `athlete`. |
+| `powerMode` | string | `normal` (Live) hoặc `eco`. |
+| `samplingIntervalMs` | integer | `2000` hoặc `8000`. |
 
 Schema: [../data/telemetry.schema.json](../data/telemetry.schema.json).
 
@@ -75,8 +81,11 @@ iot31/nhom-thanh-danh/health-band/status
   "deviceId": "health-band-01",
   "online": true,
   "uptime": 15000,
-  "firmwareVersion": "0.2.0",
-  "activeMode": "normal"
+  "firmwareVersion": "0.3.0",
+  "activeMode": "normal",
+  "profile": "student",
+  "powerMode": "normal",
+  "samplingIntervalMs": 2000
 }
 ```
 
@@ -111,6 +120,52 @@ iot31/nhom-thanh-danh/health-band/command
 }
 ```
 
+### Đổi hồ sơ demo
+
+```json
+{
+  "requestId": "dashboard-123458",
+  "command": "setProfile",
+  "value": "athlete"
+}
+```
+
+`value`: `student`, `older_adult`, `athlete`.
+
+### Đổi chế độ năng lượng
+
+```json
+{
+  "requestId": "dashboard-123459",
+  "command": "setPowerMode",
+  "value": "eco"
+}
+```
+
+`value`: `normal` hoặc `eco`.
+
+### Xác nhận cảnh báo
+
+```json
+{
+  "requestId": "dashboard-123460",
+  "command": "ackAlert",
+  "value": "HIGH_HEART_RATE"
+}
+```
+
+### Xử lý khẩn cấp mô phỏng
+
+```json
+{
+  "requestId": "dashboard-123461",
+  "command": "emergencyAction",
+  "value": "cancel"
+}
+```
+
+`value`: `cancel` hoặc `send`. Đây chỉ là mô phỏng lớp học, không gọi dịch vụ khẩn cấp thật.
+
 Firmware phản hồi qua `event`. Command không hợp lệ phải tạo `COMMAND_REJECTED` và không làm dừng telemetry.
 
 Schema: [../data/command.schema.json](../data/command.schema.json).
@@ -131,6 +186,8 @@ iot31/nhom-thanh-danh/health-band/event
   "command": "setMode",
   "value": "high_hr",
   "activeMode": "high_hr",
+  "profile": "student",
+  "powerMode": "normal",
   "timestamp": 18000,
   "message": "Scenario changed"
 }
@@ -150,12 +207,20 @@ Node-RED publish alert khi điều kiện demo đúng:
 
 | Loại | Điều kiện hiện tại |
 |---|---|
-| `HIGH_HEART_RATE` | `heartRate > 120` |
-| `LOW_HEART_RATE` | `heartRate < 50` |
-| `LOW_SPO2` | `spo2 < 94` |
+| `HIGH_HEART_RATE` | Vượt ngưỡng profile trong 3 mẫu liên tiếp |
+| `LOW_HEART_RATE` | Dưới ngưỡng profile trong 3 mẫu liên tiếp |
+| `LOW_SPO2` | Dưới ngưỡng profile trong 3 mẫu liên tiếp |
 | `FALL_DETECTED` | `fallDetected === true` |
 | `LOW_BATTERY` | `battery <= 20` |
 | `DEVICE_OFFLINE` | Không có telemetry quá 8 giây |
+
+Ngưỡng profile:
+
+| Profile | High HR | Low HR | Low SpO₂ |
+|---|---:|---:|---:|
+| Student | >120 BPM | <50 BPM | <94% |
+| Older adult | >110 BPM | <50 BPM | <94% |
+| Athlete | >130 BPM | <45 BPM | <93% |
 
 > Đây là ngưỡng demo. Các ngưỡng không phải tiêu chuẩn chẩn đoán y tế.
 

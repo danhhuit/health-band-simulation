@@ -8,5 +8,8 @@
   "fallDetected": false,
   "battery": 92,
   "signalQuality": "good",
-  "mode": "normal"
+  "mode": "normal",
+  "profile": "student",
+  "powerMode": "normal",
+  "samplingIntervalMs": 2000
 }

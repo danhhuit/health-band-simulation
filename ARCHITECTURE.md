@@ -38,7 +38,7 @@ Dự án chọn kiến trúc IoT **4 tầng** vì dễ giải thích, phù hợp
 
 ### Dữ liệu tạo ra
 
-Firmware tạo dữ liệu theo mode và publish mỗi **2 giây**:
+Firmware tạo dữ liệu theo mode và publish mỗi **2 giây** ở Live mode hoặc **8 giây** ở Eco mode:
 
 | Mode | HR | SpO₂ | Ý nghĩa |
 |---|---:|---:|---|
@@ -78,15 +78,16 @@ Node-RED chịu trách nhiệm:
 1. Subscribe `telemetry`, `status`, `event`, `alert`.
 2. Parse JSON; bỏ qua payload không phải object hoặc JSON sai cú pháp.
 3. Ghi thời điểm telemetry cuối cùng để phát hiện offline sau hơn 8 giây.
-4. Đánh giá ngưỡng demo: HR cao/thấp, SpO₂ thấp, fall và pin yếu.
-5. Publish `alert` và chuyển dữ liệu sang Dashboard.
-6. Nhận lệnh từ Dashboard rồi publish sang topic `command`.
+4. Kiểm tra chất lượng packet: trường bắt buộc, range, sequence, timestamp và signal quality.
+5. Đánh giá ngưỡng theo profile; HR/SpO₂ phải bất thường 3 mẫu liên tiếp mới publish alert.
+6. Publish `alert` và chuyển dữ liệu sang Dashboard.
+7. Nhận lệnh từ Dashboard rồi publish sang topic `command`.
 
-> Hiện rule cảnh báo theo ngưỡng trực tiếp. Bộ đếm “3 mẫu liên tiếp”, xác thực schema đầy đủ, chống trùng `seq` và TLS là hướng cải tiến, chưa phải tính năng của MVP.
+> Các ngưỡng chỉ phục vụ demo môn học, không phải tiêu chuẩn chẩn đoán. Broker public hiện chưa dùng TLS/xác thực.
 
 ## 5. Tầng 4 — Application
 
-Dashboard tại <http://localhost:1880/dashboard/overview> gồm 5 trang:
+Dashboard tại <http://localhost:1880/dashboard/overview> gồm 6 trang:
 
 | Trang | Vai trò |
 |---|---|
@@ -94,6 +95,7 @@ Dashboard tại <http://localhost:1880/dashboard/overview> gồm 5 trang:
 | Digital twin | Minh họa chiếc vòng tay số và các đầu ra phần cứng. |
 | IoT architecture | Dạy kiến trúc 4 tầng, có `Play data journey`. |
 | Presenter mode | Dẫn dắt demo bằng kịch bản/câu hỏi/kết quả. |
+| Smart Coach | F1–F12: điểm giải thích được, mục tiêu riêng, xu hướng, cảnh báo bền vững, profile, chất lượng dữ liệu, Eco mode, gợi ý và báo cáo. |
 | App guide | Tài liệu sử dụng tích hợp trong Dashboard. |
 
 Người dùng có thể chọn 🇻🇳 Tiếng Việt hoặc 🇺🇸 English; lựa chọn được lưu trong trình duyệt.
@@ -106,7 +108,7 @@ Ví dụ người xem chọn `High HR`:
 2. Node-RED publish payload sang topic `command`.
 3. ESP32 nhận lệnh, đổi mode, đổi OLED/RGB/buzzer và gửi `COMMAND_ACCEPTED` vào topic `event`.
 4. ESP32 publish telemetry HR 125–145 BPM.
-5. Node-RED tạo alert `HIGH_HEART_RATE` khi HR > 120.
+5. Node-RED tăng bộ đếm High HR; sau 3 mẫu liên tiếp mới tạo alert `HIGH_HEART_RATE`.
 6. Dashboard cập nhật Overview, Digital Twin, Health alerts và Event timeline.
 
 Chu trình trên là bằng chứng quan trọng rằng dự án có luồng IoT hai chiều, không chỉ hiển thị dữ liệu tĩnh.

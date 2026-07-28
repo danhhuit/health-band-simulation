@@ -37,6 +37,7 @@ Sau khi build, Stop/Start Wokwi để nạp firmware mới.
 | Buzzer | GPIO 18 | Âm báo khi đổi scenario; mạnh hơn khi fall. |
 | FALL/SOS button | GPIO 19 | Nút `INPUT_PULLUP`, nhấn để tạo fall cục bộ. |
 | OLED SDA/SCL | GPIO 21 / 22 | Hiển thị HR, SpO₂, bước, pin, mode. |
+| Debug UART2 RX/TX | GPIO 16 / 17 | Đưa log firmware ra Wokwi Serial Monitor ở 115200 baud. |
 
 ## 4. Kết nối
 
@@ -54,11 +55,13 @@ Firmware dùng MQTT Last Will trên topic `status`; khi mất kết nối đột
 
 ### Telemetry
 
-- Publish mỗi 2 giây vào topic `telemetry`.
+- Publish mỗi 2 giây ở Live mode hoặc mỗi 8 giây ở Eco mode.
 - `timestamp` lấy từ `millis()`.
 - `seq` tăng sau mỗi lần publish.
 - `steps` tăng ngẫu nhiên khi không ở mode fall.
 - Pin giảm chậm; mode `low_battery` giới hạn pin trong khoảng 12–19%.
+- Telemetry công bố thêm `profile`, `powerMode` và `samplingIntervalMs`.
+- Pin ≤20% tự kích hoạt chu kỳ Eco 8 giây để minh họa tiết kiệm năng lượng.
 
 ### Mode nhận từ Dashboard
 
@@ -72,6 +75,15 @@ Firmware dùng MQTT Last Will trên topic `status`; khi mất kết nối đột
 | `low_battery` | Pin yếu, LED vàng. |
 
 Lệnh `resetSteps` đặt số bước về 0.
+
+### Lệnh thông minh nhận từ Dashboard
+
+| Command | Value | Phản ứng |
+|---|---|---|
+| `setProfile` | `student`, `older_adult`, `athlete` | Lưu profile demo và công bố lại status. |
+| `setPowerMode` | `normal`, `eco` | Đổi chu kỳ telemetry 2 giây/8 giây. |
+| `ackAlert` | Mã alert | Gửi event xác nhận người trình bày đã xem cảnh báo. |
+| `emergencyAction` | `cancel`, `send` | Hủy té ngã về Normal hoặc ghi nhận đã gửi thông báo mô phỏng. |
 
 ### Event trả về
 
@@ -95,6 +107,11 @@ Kết quả đúng có thể kiểm tra bằng OLED, LED và Dashboard. Serial l
 ```
 
 Nếu Wokwi Terminal không hiển thị, xem [../TROUBLESHOOTING.md](../TROUBLESHOOTING.md).
+
+Có hai task VS Code dự phòng:
+
+- `Health Band: Wokwi Serial Monitor`: đọc UART2 qua `rfc2217://localhost:4000`.
+- `Health Band: Live MQTT Log`: in status/telemetry/event trực tiếp từ broker, không phụ thuộc webview Wokwi.
 
 ## 7. Không nên thay đổi tùy tiện
 

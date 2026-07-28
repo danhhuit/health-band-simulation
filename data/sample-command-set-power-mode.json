@@ -1,0 +1,5 @@
+{
+  "requestId": "demo-power-001",
+  "command": "setPowerMode",
+  "value": "eco"
+}
