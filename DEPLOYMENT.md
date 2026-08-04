@@ -25,6 +25,16 @@ D:\IOTs\projects\health-band-simulation
 
 Lý do: `wokwi.toml` ở thư mục gốc trỏ đến firmware và Wokwi cần file này để biết vị trí `.bin`.
 
+## Tùy chọn nhanh — Kiểm tra trước giờ demo
+
+Thay vì chạy nhiều lệnh riêng lẻ (dễ dẫn đến hai tiến trình PlatformIO cùng ghi tệp tạm), chạy **một** lệnh sau từ thư mục gốc:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\pre-demo-check.ps1 -Full
+```
+
+Script chạy tuần tự: khởi động Docker, chờ Node-RED `healthy`, build firmware, tạo/deploy Dashboard flow, kiểm tra HTTP và chạy smoke test. Khi hiện `READY FOR DEMO`, chỉ còn mở Wokwi ở Bước 5.
+
 ## Bước 2 — Build firmware
 
 ```powershell
@@ -133,3 +143,29 @@ curl.exe -sS -X POST -H "Content-Type: application/json" --data-binary "@node-re
 ```
 
 Sau đó Stop/Start Wokwi và tải lại Dashboard.
+
+## Bước 7 — Bật Gemini (tùy chọn)
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+Điền `GEMINI_API_KEY`, sau đó:
+
+```powershell
+node .\node-red\build-english-dashboard.js
+docker compose up -d --build --force-recreate
+```
+
+Xem [GEMINI_SETUP.md](GEMINI_SETUP.md).
+
+## Phục hồi sau mất nguồn
+
+1. Khởi động Docker Desktop và chạy `docker compose up -d`.
+2. Start Wokwi; ESP32 tự đọc checkpoint NVS.
+3. Mở Dashboard; browser thử snapshot mới nhất rồi snapshot trước.
+4. Kiểm tra `Last checkpoint` và event `DEVICE_RECOVERED`.
+5. Nếu bộ nhớ trình duyệt đã bị xóa, dùng **Restore backup**.
+
+Không xóa `node-red/data` và không chạy `docker compose down -v` nếu muốn giữ flow/context.

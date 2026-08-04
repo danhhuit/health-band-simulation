@@ -4,111 +4,111 @@
     "feature": "F1 explainable health score",
     "status": "PASS",
     "detail": "score=85/100 with 4 explainable factors",
-    "executedAt": "2026-07-28T06:44:51.395Z"
+    "executedAt": "2026-08-03T01:46:43.754Z"
   },
   {
     "id": "SMART-02",
     "feature": "F2 custom step goal and persistence",
     "status": "PASS",
     "detail": "8,200-step target persisted after reload",
-    "executedAt": "2026-07-28T06:44:51.814Z"
+    "executedAt": "2026-08-03T01:46:44.214Z"
   },
   {
     "id": "SMART-03",
     "feature": "F8 profile selection over MQTT",
     "status": "PASS",
-    "detail": "{\"requestId\":\"dashboard-1785221093142\",\"command\":\"setProfile\",\"value\":\"athlete\"}",
-    "executedAt": "2026-07-28T06:44:53.429Z"
+    "detail": "{\"requestId\":\"dashboard-1785721606307\",\"command\":\"setProfile\",\"value\":\"athlete\"}",
+    "executedAt": "2026-08-03T01:46:46.616Z"
   },
   {
     "id": "SMART-04",
     "feature": "F3 ten-sample trend analysis",
     "status": "PASS",
     "detail": "Trend intelligence | Compares the newest and oldest halves of the latest 10 samples | Heart rate | The average changed by +10BPM between the two halves of the data window. | Rising | SpO₂ | The average changed by -1% between the two halves ",
-    "executedAt": "2026-07-28T06:45:06.258Z"
+    "executedAt": "2026-08-03T01:47:00.724Z"
   },
   {
     "id": "SMART-05",
     "feature": "F4 alert after three abnormal samples",
     "status": "PASS",
     "detail": "No alert after 2 samples; alert visible after sample 3",
-    "executedAt": "2026-07-28T06:45:11.531Z"
+    "executedAt": "2026-08-03T01:47:06.148Z"
   },
   {
     "id": "SMART-06",
     "feature": "F5 acknowledge alert over MQTT",
     "status": "PASS",
-    "detail": "{\"requestId\":\"dashboard-1785221113025\",\"command\":\"ackAlert\",\"value\":\"HIGH_HEART_RATE\"}",
-    "executedAt": "2026-07-28T06:45:13.394Z"
+    "detail": "{\"requestId\":\"dashboard-1785721627606\",\"command\":\"ackAlert\",\"value\":\"HIGH_HEART_RATE\"}",
+    "executedAt": "2026-08-03T01:47:07.981Z"
   },
   {
     "id": "SMART-07",
     "feature": "F6 fall countdown and cancellation",
     "status": "PASS",
     "detail": "10-second emergency flow opened and was cancelled safely",
-    "executedAt": "2026-07-28T06:45:16.190Z"
+    "executedAt": "2026-08-03T01:47:10.933Z"
   },
   {
     "id": "SMART-08",
     "feature": "F7 data-quality monitor",
     "status": "PASS",
     "detail": "Data quality monitor | Checks ranges, sequence order, timestamps and required fields | Review | Large sequence gap | Out-of-order sequence number | Timestamp moved backwards | Sequence is not newer than the previous packet. | Invalid signalQuality | Unknown si",
-    "executedAt": "2026-07-28T06:45:17.551Z"
+    "executedAt": "2026-08-03T01:47:12.149Z"
   },
   {
     "id": "SMART-09",
     "feature": "F10 adaptive Eco mode over MQTT",
     "status": "PASS",
-    "detail": "{\"requestId\":\"dashboard-1785221120145\",\"command\":\"setPowerMode\",\"value\":\"eco\"}",
-    "executedAt": "2026-07-28T06:45:20.419Z"
+    "detail": "{\"requestId\":\"dashboard-1785721635047\",\"command\":\"setPowerMode\",\"value\":\"eco\"}",
+    "executedAt": "2026-08-03T01:47:15.404Z"
   },
   {
     "id": "SMART-10",
     "feature": "F11 smart non-diagnostic suggestions",
     "status": "PASS",
     "detail": "3 suggestions with safety disclaimer",
-    "executedAt": "2026-07-28T06:45:20.427Z"
+    "executedAt": "2026-08-03T01:47:15.417Z"
   },
   {
     "id": "SMART-11",
     "feature": "F12 normal-versus-current comparison",
     "status": "PASS",
     "detail": "4 metrics compared",
-    "executedAt": "2026-07-28T06:45:20.431Z"
+    "executedAt": "2026-08-03T01:47:15.425Z"
   },
   {
     "id": "SMART-12",
     "feature": "F9 export session report",
     "status": "PASS",
-    "detail": "report=health-band-session-1785221120476.json; score=67; goal=8200",
-    "executedAt": "2026-07-28T06:45:20.945Z"
+    "detail": "report=health-band-session-1785721635479.json; score=67; goal=8200",
+    "executedAt": "2026-08-03T01:47:15.941Z"
   },
   {
     "id": "SMART-13",
     "feature": "Additional guided automatic demo",
     "status": "PASS",
-    "detail": "{\"requestId\":\"dashboard-1785221122326\",\"command\":\"setMode\",\"value\":\"normal\"}",
-    "executedAt": "2026-07-28T06:45:22.668Z"
+    "detail": "{\"requestId\":\"dashboard-1785721637370\",\"command\":\"setMode\",\"value\":\"normal\"}",
+    "executedAt": "2026-08-03T01:47:17.775Z"
   },
   {
     "id": "SMART-14",
     "feature": "Additional clear-session control",
     "status": "PASS",
     "detail": "Session history, goal and profile were cleared",
-    "executedAt": "2026-07-28T06:45:23.057Z"
+    "executedAt": "2026-08-03T01:47:18.184Z"
   },
   {
     "id": "SMART-15",
     "feature": "Six application pages and responsive layout",
     "status": "PASS",
     "detail": "6 pages; no horizontal overflow at 390px",
-    "executedAt": "2026-07-28T06:45:23.141Z"
+    "executedAt": "2026-08-03T01:47:18.328Z"
   },
   {
     "id": "SMART-16",
     "feature": "No browser JavaScript errors",
     "status": "PASS",
     "detail": "No console or page errors",
-    "executedAt": "2026-07-28T06:45:23.141Z"
+    "executedAt": "2026-08-03T01:47:18.328Z"
   }
 ]

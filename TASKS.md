@@ -28,7 +28,7 @@
 | N01 | Chụp đủ ảnh bằng chứng theo test guide | Minh Thiện + Lê Hậu | NEXT | `tests/evidence/`. |
 | N02 | Quay video demo dự phòng 3–5 phút | Thành Danh + cả nhóm | NEXT | Video trong `demo/` hoặc `tailieu26`. |
 | N03 | Rà soát báo cáo Word, thay ảnh minh chứng thật nếu cần | Hồng Vỹ + Thành Danh | NEXT | Word/PDF bản nộp. |
-| N04 | Tập thuyết trình theo Presenter mode | Cả nhóm | NEXT | Demo 5–7 phút. |
+| N04 | Tập demo theo kịch bản tự động và App guide | Cả nhóm | NEXT | Demo 5–7 phút. |
 | N06 | Bảo mật broker/TLS, nhiều thiết bị, endurance | Cả nhóm | OPTIONAL | Chỉ làm nếu giảng viên yêu cầu. |
 
 ## 4. Checklist trước giờ demo

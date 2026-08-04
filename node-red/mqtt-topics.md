@@ -47,7 +47,34 @@ iot31/nhom-thanh-danh/health-band/telemetry
   "mode": "normal",
   "profile": "student",
   "powerMode": "normal",
-  "samplingIntervalMs": 2000
+  "samplingIntervalMs": 2000,
+  "dataSource": "sensors",
+  "sensorHealth": "ok",
+  "heartRateRaw": 1170,
+  "spo2Raw": 3680,
+  "motion": {
+    "accelX": 0.12,
+    "accelY": 0.31,
+    "accelZ": 9.74,
+    "magnitude": 9.75,
+    "detected": false
+  },
+  "bodyTemperatureC": 36.6,
+  "ambientLightLux": 500.0,
+  "displayMode": "bright",
+  "environment": {
+    "temperatureC": 28.0,
+    "pressurePa": 101325,
+    "altitudeM": 0.0
+  },
+  "location": {
+    "latitude": 10.762622,
+    "longitude": 106.660172,
+    "valid": true,
+    "source": "serial_nmea",
+    "updatedAt": 350
+  },
+  "hapticActive": false
 }
 ```
 
@@ -62,9 +89,19 @@ iot31/nhom-thanh-danh/health-band/telemetry
 | `battery` | integer | 0–100 %. |
 | `signalQuality` | string | `good`, `medium`, hoặc `poor`. |
 | `mode` | string | Mode hiện tại. |
-| `profile` | string | `student`, `older_adult`, hoặc `athlete`. |
+| `profile` | string | `student`, `older_adult`, `athlete`, hoặc `child`. |
 | `powerMode` | string | `normal` (Live) hoặc `eco`. |
 | `samplingIntervalMs` | integer | `2000` hoặc `8000`. |
+| `dataSource` | string | `sensors` ở mode normal hoặc `scenario_override` khi đang chạy kịch bản. |
+| `sensorHealth` | string | `ok` khi MPU6050 sẵn sàng, `degraded` khi cảm biến chuyển động lỗi. |
+| `heartRateRaw` / `spo2Raw` | integer | Giá trị ADC 0–4095 đọc từ hai đầu vào cảm biến tương tác. |
+| `motion` | object | Gia tốc X/Y/Z, độ lớn vector gia tốc và cờ chuyển động từ MPU6050. |
+| `bodyTemperatureC` | number | Nhiệt độ cơ thể mô phỏng đọc từ DS18B20. |
+| `ambientLightLux` | number | Độ sáng môi trường tính từ LDR. |
+| `displayMode` | string | `dim` hoặc `bright`, dùng để điều chỉnh độ tương phản OLED. |
+| `environment` | object | Nhiệt độ môi trường, áp suất Pa và độ cao từ BMP180. |
+| `location` | object | Tọa độ GPS parse từ câu NMEA `$GPRMC`. |
+| `hapticActive` | boolean | Đầu ra motor rung mô phỏng đang bật hay không. |
 
 Schema: [../data/telemetry.schema.json](../data/telemetry.schema.json).
 
@@ -81,7 +118,7 @@ iot31/nhom-thanh-danh/health-band/status
   "deviceId": "health-band-01",
   "online": true,
   "uptime": 15000,
-  "firmwareVersion": "0.3.0",
+  "firmwareVersion": "0.6.0",
   "activeMode": "normal",
   "profile": "student",
   "powerMode": "normal",
@@ -130,7 +167,7 @@ iot31/nhom-thanh-danh/health-band/command
 }
 ```
 
-`value`: `student`, `older_adult`, `athlete`.
+`value`: `student`, `older_adult`, `athlete`, `child`.
 
 ### Đổi chế độ năng lượng
 
@@ -241,3 +278,23 @@ Mọi thay đổi topic/payload phải cập nhật và kiểm tra đồng thờ
 - Node-RED flow;
 - Dashboard template;
 - tài liệu và test case.
+
+## 10. Mở rộng hợp đồng v0.6.0
+
+Telemetry thêm `gender`, `wearing`, `wearMode`, `vitalDataValid`, `bloodPressure`, `sleep` và `recovery`. Profile hợp lệ gồm `student`, `older_adult`, `athlete`, `child`.
+
+Command mới:
+
+```json
+{"requestId":"dashboard-1","command":"setGender","value":"female"}
+```
+
+```json
+{"requestId":"dashboard-2","command":"setWearState","value":"off_wrist"}
+```
+
+```json
+{"requestId":"dashboard-3","command":"setMode","value":"sleep"}
+```
+
+Node-RED không đánh giá cảnh báo HR/SpO₂/nhiệt độ khi `wearing=false` hoặc `vitalDataValid=false`.

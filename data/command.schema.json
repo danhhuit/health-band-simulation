@@ -18,6 +18,8 @@
         "setMode",
         "resetSteps",
         "setProfile",
+        "setGender",
+        "setWearState",
         "setPowerMode",
         "ackAlert",
         "emergencyAction"
@@ -33,7 +35,7 @@
       "properties": {
         "command": { "const": "setMode" },
         "value": {
-          "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
+          "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery", "sleep"]
         }
       },
       "required": ["value"]
@@ -47,7 +49,21 @@
     {
       "properties": {
         "command": { "const": "setProfile" },
-        "value": { "enum": ["student", "older_adult", "athlete"] }
+        "value": { "enum": ["student", "older_adult", "athlete", "child"] }
+      },
+      "required": ["value"]
+    },
+    {
+      "properties": {
+        "command": { "const": "setGender" },
+        "value": { "enum": ["male", "female"] }
+      },
+      "required": ["value"]
+    },
+    {
+      "properties": {
+        "command": { "const": "setWearState" },
+        "value": { "enum": ["auto", "worn", "off_wrist"] }
       },
       "required": ["value"]
     },

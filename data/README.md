@@ -1,5 +1,7 @@
 # Dữ liệu mô phỏng và JSON Schema
 
+Phiên bản hợp đồng hiện tại là v0.6.0. Telemetry có thêm profile `child`, giới tính, trạng thái đeo, huyết áp ước tính, sensor-fusion sleep và checkpoint recovery. Khi không đeo, HR/SpO₂/BP bằng 0 nhưng phải đi kèm `vitalDataValid=false`; phía xử lý không được xem đây là chỉ số sức khỏe thật.
+
 Thư mục `data/` là hợp đồng dữ liệu dùng chung. Không lưu dữ liệu sức khỏe thật tại đây.
 
 ## Tệp có trong thư mục

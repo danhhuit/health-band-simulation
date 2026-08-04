@@ -51,7 +51,7 @@ Nhấn **Play data journey**.
 
 1. Mở **Digital twin** để đối chiếu vòng tay số với Wokwi.
 2. Chuyển 🇻🇳/🇺🇸 để chứng minh giao diện song ngữ.
-3. Mở **App guide** hoặc **Presenter mode** để cho thấy ứng dụng hỗ trợ người thuyết trình.
+3. Mở **App guide** để cho thấy ứng dụng có hướng dẫn sử dụng tích hợp.
 
 ### 7. Kết luận — 30 giây
 

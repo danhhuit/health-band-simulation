@@ -8,22 +8,22 @@ Mô phỏng vòng tay theo dõi sức khỏe cá nhân cho môn IoTs. Dự án s
 
 Hệ thống mô phỏng một vòng tay có thể:
 
-- Sinh nhịp tim, SpO₂, số bước, pin, tín hiệu và trạng thái té ngã.
+- Đọc HR/SpO₂, MPU6050, DS18B20, LDR và BMP180; hỗ trợ GPS NMEA giả lập và phản hồi rung mô phỏng.
 - Gửi dữ liệu qua Wi-Fi/MQTT mỗi **2 giây** ở Live mode hoặc **8 giây** ở Eco mode.
 - Hiển thị OLED, LED RGB, còi và nút FALL/SOS ngay trên Wokwi.
 - Phân tích dữ liệu bằng Node-RED, tạo cảnh báo và phát hiện offline sau 8 giây không nhận telemetry.
-- Hiển thị Dashboard tương tác, mô hình vòng tay số, kiến trúc IoT 4 tầng, chế độ thuyết trình, Smart Coach và hướng dẫn trong ứng dụng.
+- Hiển thị Dashboard tương tác, mô hình vòng tay số, kiến trúc IoT 4 tầng, Hồ sơ sức khỏe, Smart Coach và hướng dẫn trong ứng dụng.
 
 ## 2. Kiến trúc 4 tầng
 
 ```text
-Tầng 4 — Ứng dụng: Dashboard, Digital Twin, Presenter, Smart Coach, App guide
+Tầng 4 — Ứng dụng: Dashboard, Digital Twin, Health Profile, Smart Coach, App guide
                          ↑↓ MQTT command / telemetry / alert / event
 Tầng 3 — Xử lý: Node-RED parse JSON, cảnh báo, offline, timeline
                          ↑↓ MQTT
 Tầng 2 — Mạng: Wi-Fi Wokwi-GUEST + broker.emqx.io:1883
                          ↑↓ MQTT
-Tầng 1 — Thiết bị: ESP32 Wokwi + OLED + RGB LED + buzzer + FALL/SOS
+Tầng 1 — Thiết bị: ESP32 + HR/SpO₂ + MPU6050 + DS18B20 + LDR + BMP180 + GPS/haptic
 ```
 
 Giải thích chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -37,6 +37,16 @@ Giải thích chi tiết: [ARCHITECTURE.md](ARCHITECTURE.md).
 - VS Code, extension **PlatformIO IDE** và **Wokwi Simulator**.
 - Tài khoản/giấy phép Wokwi hợp lệ nếu extension yêu cầu.
 - Cổng `1880` chưa bị ứng dụng khác dùng.
+
+### Kiểm tra nhanh trước khi demo
+
+Sau khi đã cài đặt, có thể chạy một lệnh tuần tự để chuẩn bị toàn bộ môi trường:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\pre-demo-check.ps1 -Full
+```
+
+Không chạy đồng thời lệnh này với Build PlatformIO khác, vì PlatformIO sẽ cùng sử dụng tệp tạm trong `firmware-wokwi\.pio`.
 
 ### Bước 1 — Mở đúng thư mục
 
@@ -94,12 +104,12 @@ Dashboard có 6 trang, chuyển bằng các tab ở đầu trang:
 
 | Trang | Dùng để làm gì? |
 |---|---|
-| **Overview** | Xem HR, SpO₂, bước, pin, tín hiệu, biểu đồ, cảnh báo và timeline. |
+| **Overview** | Xem chỉ số chính, cảm biến mở rộng, biểu đồ, điều khiển mô phỏng và cảnh báo. |
 | **Digital twin** | Quan sát chiếc vòng tay số hiển thị cùng dữ liệu với ESP32 Wokwi. |
-| **IoT architecture** | Giải thích 4 tầng và nút `Play data journey`. |
-| **Presenter mode** | Thuyết trình theo kịch bản, có câu hỏi cho người xem. |
 | **Smart Coach** | Điểm sức khỏe giải thích được, mục tiêu bước tùy chỉnh, xu hướng, chất lượng dữ liệu, hồ sơ demo, Eco mode và demo tự động. |
+| **Health profile** | Nhập tuổi, chiều cao, cân nặng, giới tính và mức vận động; xem BMI cùng mục tiêu ngủ theo tuổi. |
 | **App guide** | Xem giải thích từng trang và chức năng ngay trong ứng dụng. |
+| **Activity log** | Tạo/tải báo cáo, xuất/phục hồi bản sao lưu và xem hoạt động gần đây. |
 
 Ở góc đầu Dashboard có hai lựa chọn ngôn ngữ: **🇻🇳 Tiếng Việt** và **🇺🇸 English**. Lựa chọn được lưu sau khi tải lại trang.
 
@@ -119,7 +129,7 @@ Header còn có:
 | F5 | Xác nhận đã xem cảnh báo | Ở Overview bấm `Acknowledge`; Dashboard gửi lệnh MQTT `ackAlert`. |
 | F6 | Quy trình té ngã có đếm ngược 10 giây | Chọn Fall, sau đó hủy bằng `I am safe` hoặc chờ gửi thông báo mô phỏng. |
 | F7 | Giám sát chất lượng dữ liệu | Kiểm tra trường bắt buộc, range, `seq`, timestamp và signal quality. |
-| F8 | Hồ sơ Student / Older adult / Athlete | Chọn profile để đổi ngưỡng cảnh báo demo và gợi ý vận động. |
+| F8 | Hồ sơ Student / Older adult / Athlete / Child và giới tính | Chọn profile/giới tính để đổi ngưỡng demo, mục tiêu và phân nhóm báo cáo. |
 | F9 | Xuất báo cáo phiên JSON | Bấm `Export report` để tải dữ liệu, điểm, cảnh báo, profile và lịch sử. |
 | F10 | Live/Eco thích ứng | Live gửi mỗi 2 giây; Eco gửi mỗi 8 giây; pin ≤20% tự chuyển Eco trên thiết bị. |
 | F11 | Gợi ý sức khỏe không chẩn đoán | Smart Coach tạo gợi ý hành động kèm lưu ý không thay thế tư vấn y tế. |
@@ -127,7 +137,7 @@ Header còn có:
 
 Hai tiện ích bổ sung:
 
-- **Guided smart demo** tự chạy Normal → High HR → Low SpO₂ → Fall → Low battery → Recovery bằng lệnh MQTT thật.
+- **Guided smart demo** tự chạy Digital Twin → Normal → High HR → Low SpO₂ → Sleep → Fall → Low battery → Recovery.
 - **Clear session** xóa lịch sử, cảnh báo, mục tiêu và profile lưu cục bộ để bắt đầu một phiên mới.
 
 ### Các tình huống demo
@@ -208,11 +218,30 @@ health-band-simulation/
 
 ## 9. Trạng thái hiện tại và giới hạn
 
-Ứng dụng đã chạy end-to-end, có Dashboard song ngữ và Smart Coach F1–F12. Kiểm thử Smart Coach gần nhất đạt **16/16**; firmware v0.3.0 build thành công. Tuy nhiên đây vẫn là mô phỏng môn học:
+Ứng dụng đã chạy end-to-end, có Dashboard song ngữ, Smart Coach và báo cáo tự động. Firmware v0.6.0 và smoke test hiện đều build/chạy thành công. Tuy nhiên đây vẫn là mô phỏng môn học:
 
-- Chưa dùng cảm biến y tế thật, pin/sạc thật hoặc người đeo thật.
+- Đã có bộ cảm biến mở rộng trong Wokwi, nhưng chưa dùng MAX30102, GPS Neo-6M hoặc motor rung vật lý; mọi số đo vẫn chỉ phục vụ mô phỏng học tập.
 - Broker hiện là public và không dùng TLS/xác thực; không gửi dữ liệu cá nhân thật.
 - Chưa hỗ trợ nhiều thiết bị đồng thời hoặc kiểm thử tải/dài ngày.
 - Các ngưỡng HR/SpO₂ chỉ là ngưỡng demo.
 
 Kết quả test chi tiết nằm trong `D:\IOTs\tailieu26\TestCase_VongTayTheoDoiSucKhoe_DaChay_2026-07-28.xlsx`.
+
+## 10. Cập nhật v0.6.0
+
+- Thêm profile **Child** và giới tính **Male/Female** cho mọi profile.
+- Thêm huyết áp ước tính, trạng thái đeo/không đeo và xử lý mẫu thiếu.
+- Auto Sleep Tracking bằng sensor fusion và lịch ngủ cá nhân.
+- Báo cáo hourly/daily/monthly, tạo ngay hoặc tải JSON.
+- Checkpoint ba lớp: ESP32 NVS, hai browser snapshot và Node-RED/Docker volume.
+- `Demo thông minh tự động` chạy độc lập và tự chuyển trang/tình huống theo kịch bản.
+- Gemini tùy chọn qua API Node-RED; API key không xuất hiện trong trình duyệt.
+- Ngày/giờ toàn cục hiển thị ở header.
+
+Đọc thêm: [FEATURES_V06.md](FEATURES_V06.md), [GEMINI_SETUP.md](GEMINI_SETUP.md), [DEVICE_COMPARISON.md](DEVICE_COMPARISON.md).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\smoke-test.ps1
+```
+
+Kết quả gần nhất: smoke test đạt toàn bộ, firmware `0.6.0` build thành công và Node-RED có 25 node.
