@@ -10,11 +10,12 @@ http://localhost:1880/dashboard/overview
 
 ## Các phần của Dashboard
 
-1. **Overview**: số đo, trạng thái, biểu đồ, alert, điều khiển scenario, timeline.
+1. **Overview**: chỉ số chính, cảm biến mở rộng, biểu đồ, trạng thái, điều khiển scenario và alert.
 2. **Digital twin**: vòng tay số, OLED/LED/buzzer/SOS mô phỏng.
-3. **IoT architecture**: bốn tầng và hành trình dữ liệu.
-4. **Presenter mode**: kịch bản tương tác khi thuyết trình.
+3. **Smart Coach**: phân tích, mục tiêu cá nhân và demo tự động.
+4. **Health profile**: thông tin cơ thể cơ bản, BMI và mục tiêu ngủ theo tuổi.
 5. **App guide**: hướng dẫn tích hợp trong ứng dụng.
+6. **Activity log**: báo cáo tự động, sao lưu/phục hồi và hoạt động gần đây.
 
 Dashboard hỗ trợ 🇻🇳 Tiếng Việt và 🇺🇸 English. Ngôn ngữ được lưu trong `localStorage` của trình duyệt.
 

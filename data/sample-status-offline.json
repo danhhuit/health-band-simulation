@@ -2,9 +2,15 @@
   "deviceId": "health-band-01",
   "online": false,
   "uptime": 0,
-  "firmwareVersion": "0.3.0",
+  "firmwareVersion": "0.6.0",
   "activeMode": "normal",
-  "profile": "student",
+  "profile": "child",
+  "gender": "female",
+  "wearing": false,
+  "wearMode": "auto",
+  "sleepStage": "not_tracked",
+  "stateRestored": false,
+  "checkpointSequence": 4,
   "powerMode": "normal",
   "samplingIntervalMs": 2000
 }

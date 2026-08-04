@@ -9,14 +9,32 @@
     "seq",
     "heartRate",
     "spo2",
+    "bloodPressure",
     "steps",
     "fallDetected",
     "battery",
     "signalQuality",
     "mode",
     "profile",
+    "gender",
+    "wearing",
+    "wearMode",
+    "vitalDataValid",
     "powerMode",
-    "samplingIntervalMs"
+    "samplingIntervalMs",
+    "dataSource",
+    "sensorHealth",
+    "heartRateRaw",
+    "spo2Raw",
+    "motion",
+    "bodyTemperatureC",
+    "ambientLightLux",
+    "displayMode",
+    "environment",
+    "location",
+    "hapticActive",
+    "sleep",
+    "recovery"
   ],
   "properties": {
     "deviceId": {
@@ -33,13 +51,24 @@
     },
     "heartRate": {
       "type": "integer",
-      "minimum": 40,
+      "minimum": 0,
       "maximum": 200
     },
     "spo2": {
       "type": "integer",
-      "minimum": 70,
+      "minimum": 0,
       "maximum": 100
+    },
+    "bloodPressure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["systolic", "diastolic", "source", "medicalGrade"],
+      "properties": {
+        "systolic": { "type": "integer", "minimum": 0, "maximum": 250 },
+        "diastolic": { "type": "integer", "minimum": 0, "maximum": 180 },
+        "source": { "const": "simulated_estimate" },
+        "medicalGrade": { "const": false }
+      }
     },
     "steps": {
       "type": "integer",
@@ -59,11 +88,25 @@
     },
     "mode": {
       "type": "string",
-      "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
+      "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery", "sleep"]
     },
     "profile": {
       "type": "string",
-      "enum": ["student", "older_adult", "athlete"]
+      "enum": ["student", "older_adult", "athlete", "child"]
+    },
+    "gender": {
+      "type": "string",
+      "enum": ["male", "female"]
+    },
+    "wearing": {
+      "type": "boolean"
+    },
+    "wearMode": {
+      "type": "string",
+      "enum": ["auto", "worn", "off_wrist"]
+    },
+    "vitalDataValid": {
+      "type": "boolean"
     },
     "powerMode": {
       "type": "string",
@@ -72,6 +115,98 @@
     "samplingIntervalMs": {
       "type": "integer",
       "enum": [2000, 8000]
+    },
+    "dataSource": {
+      "type": "string",
+      "enum": ["sensors", "scenario_override"]
+    },
+    "sensorHealth": {
+      "type": "string",
+      "enum": ["ok", "degraded"]
+    },
+    "heartRateRaw": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4095
+    },
+    "spo2Raw": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4095
+    },
+    "motion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accelX", "accelY", "accelZ", "magnitude", "detected"],
+      "properties": {
+        "accelX": { "type": "number" },
+        "accelY": { "type": "number" },
+        "accelZ": { "type": "number" },
+        "magnitude": { "type": "number", "minimum": 0 },
+        "detected": { "type": "boolean" }
+      }
+    },
+    "bodyTemperatureC": {
+      "type": "number",
+      "minimum": -55,
+      "maximum": 125
+    },
+    "ambientLightLux": {
+      "type": "number",
+      "minimum": 0
+    },
+    "displayMode": {
+      "type": "string",
+      "enum": ["dim", "bright"]
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["temperatureC", "pressurePa", "altitudeM"],
+      "properties": {
+        "temperatureC": { "type": "number" },
+        "pressurePa": { "type": "integer", "minimum": 30000, "maximum": 110000 },
+        "altitudeM": { "type": "number" }
+      }
+    },
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latitude", "longitude", "valid", "source", "updatedAt"],
+      "properties": {
+        "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
+        "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+        "valid": { "type": "boolean" },
+        "source": { "type": "string" },
+        "updatedAt": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "hapticActive": {
+      "type": "boolean"
+    },
+    "sleep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage", "confidence", "candidateSinceMs", "detectedStartMs", "durationMs", "model", "timeWindowMatched"],
+      "properties": {
+        "stage": { "type": "string", "enum": ["not_tracked", "awake", "candidate", "light", "deep"] },
+        "confidence": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "candidateSinceMs": { "type": "integer", "minimum": 0 },
+        "detectedStartMs": { "type": "integer", "minimum": 0 },
+        "durationMs": { "type": "integer", "minimum": 0 },
+        "model": { "const": "sensor_fusion_demo" },
+        "timeWindowMatched": { "type": "boolean" }
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stateRestored", "checkpointSequence", "checkpointIntervalMs"],
+      "properties": {
+        "stateRestored": { "type": "boolean" },
+        "checkpointSequence": { "type": "integer", "minimum": 0 },
+        "checkpointIntervalMs": { "type": "integer", "minimum": 1000 }
+      }
     }
   }
 }

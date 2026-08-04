@@ -10,6 +10,10 @@
     "command",
     "activeMode",
     "profile",
+    "gender",
+    "wearing",
+    "wearMode",
+    "sleepStage",
     "powerMode",
     "timestamp",
     "message"
@@ -23,6 +27,7 @@
       "type": "string",
       "enum": [
         "DEVICE_STARTED",
+        "DEVICE_RECOVERED",
         "COMMAND_ACCEPTED",
         "COMMAND_REJECTED",
         "LOCAL_FALL_BUTTON"
@@ -39,11 +44,26 @@
     },
     "activeMode": {
       "type": "string",
-      "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery"]
+      "enum": ["normal", "high_hr", "low_hr", "low_spo2", "fall", "low_battery", "sleep"]
     },
     "profile": {
       "type": "string",
-      "enum": ["student", "older_adult", "athlete"]
+      "enum": ["student", "older_adult", "athlete", "child"]
+    },
+    "gender": {
+      "type": "string",
+      "enum": ["male", "female"]
+    },
+    "wearing": {
+      "type": "boolean"
+    },
+    "wearMode": {
+      "type": "string",
+      "enum": ["auto", "worn", "off_wrist"]
+    },
+    "sleepStage": {
+      "type": "string",
+      "enum": ["not_tracked", "awake", "candidate", "light", "deep"]
     },
     "powerMode": {
       "type": "string",

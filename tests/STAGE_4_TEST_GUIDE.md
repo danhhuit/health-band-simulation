@@ -31,8 +31,8 @@ Một test chỉ ghi **Đạt** khi có thao tác tái hiện, kết quả quan 
 | EV07 | Low battery | `SM-07-low-battery.png` |
 | EV08 | Reset steps trước/sau | `SM-08-before.png`, `SM-08-after.png` |
 | EV09 | Digital Twin | `SM-11-digital-twin.png` |
-| EV10 | Architecture 4 tầng | `SM-10-architecture.png` |
-| EV11 | Presenter mode/App guide/song ngữ | `SM-09-guide-language.png` |
+| EV10 | Activity log: báo cáo/sao lưu/sự kiện | `SM-10-activity-log.png` |
+| EV11 | Smart Coach/App guide/song ngữ | `SM-09-guide-language.png` |
 | EV12 | Offline rồi recovery | `SM-12-recovery.png` |
 
 ## 4. Quy tắc chụp ảnh
@@ -89,11 +89,11 @@ Bằng chứng tự động:
 
 Kịch bản E2E đã kiểm tra:
 
-- Dashboard tải được, 5 tab hiển thị.
+- Dashboard tải được, 6 tab hiển thị đúng thứ tự.
 - 🇻🇳/🇺🇸 chuyển ngôn ngữ và lưu lựa chọn.
 - Telemetry live, High HR, Low SpO₂, Fall.
-- Digital Twin, Architecture 4 tầng, Data journey.
-- Presenter navigation, App guide, MQTT command, màn hình 390 px.
+- Digital Twin, Smart Coach, Health profile và Activity log.
+- App guide, MQTT command, màn hình 390 px.
 - Không có lỗi JavaScript trên giao diện.
 
 Ảnh tự động: `tests/evidence/e2e/`.

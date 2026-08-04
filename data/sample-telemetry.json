@@ -4,12 +4,63 @@
   "seq": 25,
   "heartRate": 78,
   "spo2": 98,
+  "bloodPressure": {
+    "systolic": 118,
+    "diastolic": 76,
+    "source": "simulated_estimate",
+    "medicalGrade": false
+  },
   "steps": 125,
   "fallDetected": false,
   "battery": 92,
   "signalQuality": "good",
   "mode": "normal",
-  "profile": "student",
+  "profile": "child",
+  "gender": "female",
+  "wearing": true,
+  "wearMode": "auto",
+  "vitalDataValid": true,
   "powerMode": "normal",
-  "samplingIntervalMs": 2000
+  "samplingIntervalMs": 2000,
+  "dataSource": "sensors",
+  "sensorHealth": "ok",
+  "heartRateRaw": 1470,
+  "spo2Raw": 3600,
+  "motion": {
+    "accelX": 0.1,
+    "accelY": 0.2,
+    "accelZ": 9.8,
+    "magnitude": 9.81,
+    "detected": false
+  },
+  "bodyTemperatureC": 36.5,
+  "ambientLightLux": 450,
+  "displayMode": "bright",
+  "environment": {
+    "temperatureC": 28,
+    "pressurePa": 101325,
+    "altitudeM": 8.5
+  },
+  "location": {
+    "latitude": 10.762622,
+    "longitude": 106.660172,
+    "valid": true,
+    "source": "serial_nmea",
+    "updatedAt": 12000
+  },
+  "hapticActive": false,
+  "sleep": {
+    "stage": "awake",
+    "confidence": 0,
+    "candidateSinceMs": 0,
+    "detectedStartMs": 0,
+    "durationMs": 0,
+    "model": "sensor_fusion_demo",
+    "timeWindowMatched": false
+  },
+  "recovery": {
+    "stateRestored": true,
+    "checkpointSequence": 4,
+    "checkpointIntervalMs": 30000
+  }
 }

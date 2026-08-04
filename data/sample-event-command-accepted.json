@@ -5,7 +5,11 @@
   "command": "setMode",
   "value": "high_hr",
   "activeMode": "high_hr",
-  "profile": "student",
+  "profile": "child",
+  "gender": "female",
+  "wearing": true,
+  "wearMode": "auto",
+  "sleepStage": "awake",
   "powerMode": "normal",
   "timestamp": 25000,
   "message": "Scenario changed"

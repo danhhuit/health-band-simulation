@@ -26,9 +26,10 @@ Người xem chọn tình huống
 |---|---|
 | Overview | Chọn scenario, xem chỉ số, alert và timeline. |
 | Digital twin | Đối chiếu vòng tay số với OLED/RGB/buzzer Wokwi. |
-| IoT architecture | Nhấn layer hoặc `Play data journey` để giải thích 4 tầng. |
-| Presenter mode | Dùng câu hỏi và nút `Run this step` để dẫn dắt người xem. |
+| Smart Coach | Chạy Demo thông minh tự động và theo dõi từng tình huống. |
+| Health profile | Nhập hồ sơ mẫu, xem BMI và áp dụng mục tiêu ngủ. |
 | App guide | Giải thích nhanh toàn bộ giao diện khi người xem hỏi. |
+| Activity log | Tạo báo cáo, xuất sao lưu và xem dòng sự kiện. |
 
 ## 4. Kịch bản tương tác đề xuất
 
@@ -62,14 +63,14 @@ Người xem chọn tình huống
 - Nhấn 🇻🇳 Tiếng Việt rồi 🇺🇸 English.
 - Tải lại trang để cho thấy lựa chọn ngôn ngữ vẫn được lưu.
 
-## 5. Dùng Presenter mode
+## 5. Dùng Demo thông minh tự động
 
-Presenter mode có sẵn các bước. Ở mỗi bước:
+Mở Smart Coach và nhấn **Start automatic demo**. Ứng dụng sẽ:
 
-1. Đọc mục tiêu và câu hỏi trên màn hình.
-2. Cho người xem dự đoán kết quả.
-3. Nhấn `Run this step`.
-4. Đối chiếu Live proof với Wokwi/Dashboard.
+1. Mở Vòng tay số để giới thiệu thiết bị ảo.
+2. Lần lượt gửi các tình huống qua MQTT.
+3. Cập nhật vòng tay số, cảnh báo và timeline.
+4. Trở về trạng thái Normal khi kết thúc.
 
 ## 6. Ảnh cần chụp/lưu
 
@@ -78,9 +79,9 @@ Presenter mode có sẵn các bước. Ở mỗi bước:
 - High HR hoặc Low SpO₂ có alert.
 - Fall có LED đỏ/còi/alert critical.
 - Digital Twin đối chiếu với Wokwi.
-- Architecture có đủ 4 tầng.
-- Presenter mode có câu hỏi.
+- Smart Coach đang chạy Demo thông minh tự động.
 - App Guide và nút 🇻🇳/🇺🇸.
+- Activity log có báo cáo, sao lưu và sự kiện.
 
 Danh sách chi tiết: [../tests/STAGE_4_TEST_GUIDE.md](../tests/STAGE_4_TEST_GUIDE.md).
 
@@ -92,3 +93,22 @@ Danh sách chi tiết: [../tests/STAGE_4_TEST_GUIDE.md](../tests/STAGE_4_TEST_GU
 | Wokwi chạy firmware cũ | Stop, build lại, Start. |
 | MQTT disconnected | Kiểm tra Internet/broker; dùng ảnh/video dự phòng nếu cần. |
 | Không thấy Serial | Dùng OLED, LED, Node-RED connected và Dashboard thay đổi làm bằng chứng. |
+
+## 8. Demo v0.6.0 trong 8–10 phút
+
+1. **Normal**: giới thiệu HR, SpO₂, BP ước tính, bước, pin và đồng hồ toàn cục.
+2. **Cá nhân hóa**: chọn Child, chọn Male/Female và đổi step goal.
+3. **Không đeo**: chọn Off wrist; chứng minh thiết bị vẫn Connected nhưng vitals/sleep không được tính.
+4. **Đeo lại**: chọn Worn hoặc Auto; dữ liệu sinh tồn trở lại.
+5. **Sleep**: chọn mode Sleep, đợi 15–30 giây để xem Candidate/Light; giải thích sensor fusion và ngưỡng demo.
+6. **Report**: bấm Generate now, tải báo cáo JSON và chỉ `wearCoveragePercent`.
+7. **Gemini**: bấm Ask Gemini; nếu có key sẽ nhận gợi ý AI, nếu không sẽ dùng local fallback.
+8. **Fall**: kích hoạt FALL/SOS và xác nhận countdown, LED, buzzer, alert.
+9. **Recovery**: trở về Normal, export backup; restart Wokwi để chỉ event `DEVICE_RECOVERED`.
+
+Nếu muốn chạy không cần thao tác từng bước, mở Smart Coach và bấm **Start automatic demo**:
+
+```text
+Digital Twin → Normal → High HR → Low SpO₂
+→ Sleep → Fall → Low battery → Recovery
+```

@@ -7,7 +7,7 @@ Dự án chọn kiến trúc IoT **4 tầng** vì dễ giải thích, phù hợp
 ```text
 ┌─────────────────────────────────────────────────────────┐
 │ Tầng 4 — Application                                     │
-│ Dashboard · Digital Twin · Presenter Mode · App Guide     │
+│ Dashboard · Digital Twin · Health Profile · Smart Coach   │
 └──────────────────────────▲──────────────────────────────┘
                            │ telemetry / alert / event
 ┌──────────────────────────┴──────────────────────────────┐
@@ -31,6 +31,14 @@ Dự án chọn kiến trúc IoT **4 tầng** vì dễ giải thích, phù hợp
 ### Thành phần
 
 - ESP32 DevKit mô phỏng trên Wokwi.
+- MPU6050 I²C: đọc gia tốc ba trục để phát hiện chuyển động, bước và té ngã.
+- HR sensor input trên GPIO 34: thanh trượt analog tương tác mô phỏng tín hiệu quang học.
+- SpO₂ sensor input trên GPIO 35: thanh trượt analog tương tác mô phỏng tín hiệu quang học.
+- DS18B20 trên GPIO 5: nhiệt độ cơ thể mô phỏng.
+- LDR trên GPIO 33: ánh sáng môi trường và điều khiển độ tương phản OLED.
+- BMP180 dùng chung I²C: áp suất, nhiệt độ môi trường và độ cao.
+- GPS NMEA qua UART: tọa độ dùng trong workflow Fall/SOS.
+- Haptic GPIO 23: đầu ra motor rung được biểu diễn bằng đèn báo trong Wokwi.
 - OLED I²C: hiển thị HR, SpO₂, bước, pin và mode.
 - RGB LED: xanh lá = normal, vàng = cảnh báo, đỏ = fall, xanh dương = mất MQTT.
 - Buzzer: âm ngắn khi đổi mode, âm mạnh hơn khi fall.
@@ -38,7 +46,7 @@ Dự án chọn kiến trúc IoT **4 tầng** vì dễ giải thích, phù hợp
 
 ### Dữ liệu tạo ra
 
-Firmware tạo dữ liệu theo mode và publish mỗi **2 giây** ở Live mode hoặc **8 giây** ở Eco mode:
+Ở mode `normal`, firmware đọc HR/SpO₂ từ đầu vào analog và tính bước/té ngã từ MPU6050. Khi chọn mode cảnh báo, dữ liệu cảm biến được ghi đè có chủ đích để tạo kịch bản lặp lại được. Telemetry được publish mỗi **2 giây** ở Live mode hoặc **8 giây** ở Eco mode:
 
 | Mode | HR | SpO₂ | Ý nghĩa |
 |---|---:|---:|---|
@@ -51,7 +59,7 @@ Firmware tạo dữ liệu theo mode và publish mỗi **2 giây** ở Live mode
 
 ### Trách nhiệm
 
-- Sinh telemetry có `timestamp = millis()` và `seq` tăng dần.
+- Đọc cảm biến → ánh xạ/hiệu chỉnh → tính chuyển động/bước/té ngã → sinh telemetry có `timestamp = millis()` và `seq` tăng dần.
 - Publish `status` online retained sau khi kết nối MQTT.
 - Subscribe `command`.
 - Gửi `event` để xác nhận/thông báo việc thiết bị đã xử lý lệnh.
@@ -91,12 +99,12 @@ Dashboard tại <http://localhost:1880/dashboard/overview> gồm 6 trang:
 
 | Trang | Vai trò |
 |---|---|
-| Overview | Theo dõi dữ liệu, alert, timeline và gửi scenario command. |
+| Overview | Theo dõi dữ liệu, cảm biến mở rộng, alert và gửi scenario command. |
 | Digital twin | Minh họa chiếc vòng tay số và các đầu ra phần cứng. |
-| IoT architecture | Dạy kiến trúc 4 tầng, có `Play data journey`. |
-| Presenter mode | Dẫn dắt demo bằng kịch bản/câu hỏi/kết quả. |
 | Smart Coach | F1–F12: điểm giải thích được, mục tiêu riêng, xu hướng, cảnh báo bền vững, profile, chất lượng dữ liệu, Eco mode, gợi ý và báo cáo. |
+| Health profile | Lưu thông tin cơ thể trên trình duyệt, tính BMI sàng lọc và gợi ý mục tiêu ngủ theo tuổi. |
 | App guide | Tài liệu sử dụng tích hợp trong Dashboard. |
+| Activity log | Lưu báo cáo, điểm phục hồi và dòng sự kiện đầu cuối. |
 
 Người dùng có thể chọn 🇻🇳 Tiếng Việt hoặc 🇺🇸 English; lựa chọn được lưu trong trình duyệt.
 
@@ -112,3 +120,26 @@ Ví dụ người xem chọn `High HR`:
 6. Dashboard cập nhật Overview, Digital Twin, Health alerts và Event timeline.
 
 Chu trình trên là bằng chứng quan trọng rằng dự án có luồng IoT hai chiều, không chỉ hiển thị dữ liệu tĩnh.
+
+## 7. Trạng thái đeo và giấc ngủ
+
+```text
+HR/SpO₂ raw + DS18B20 + MPU6050 + thời gian NTP
+        ↓
+Nhận biết đang đeo
+        ├─ Không đeo → vitalDataValid=false, sleep=not_tracked
+        └─ Đang đeo → sensor fusion → awake/candidate/light/deep
+```
+
+Demo dùng ngưỡng tăng tốc 15/30/60 giây. Đây là mô hình giải thích thuật toán, không phải phân loại giấc ngủ lâm sàng.
+
+## 8. Sao lưu và phục hồi
+
+- Device: `Preferences` lưu NVS mỗi 30 giây và sau lệnh.
+- Processing: Node-RED dùng `localfilesystem`; `/data` được mount ra `node-red/data`.
+- Application: `localStorage` giữ snapshot hiện tại và snapshot trước; hỗ trợ Export/Restore JSON.
+- Sau mất nguồn, ESP32 gửi `DEVICE_RECOVERED` và telemetry có `recovery.stateRestored`.
+
+## 9. Gemini
+
+Dashboard gửi aggregate ẩn danh đến API nội bộ Node-RED. Node-RED mới gọi Gemini bằng key trong biến môi trường. Nếu API lỗi, Smart Coach cục bộ tiếp tục hoạt động.

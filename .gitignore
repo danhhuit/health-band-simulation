@@ -43,3 +43,7 @@ mosquitto/log/
 # Temporary Node-RED deployment responses
 deploy-response.txt
 deploy-test.txt
+.env
+.env.*
+!.env.example
+node-red/data/context/

@@ -100,6 +100,102 @@
       "attrs": {
         "value": "220"
       }
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "motionSensor",
+      "top": -80,
+      "left": -270,
+      "attrs": {
+        "accelX": "0",
+        "accelY": "0",
+        "accelZ": "1",
+        "temperature": "24"
+      }
+    },
+    {
+      "type": "wokwi-slide-potentiometer",
+      "id": "heartRateSensor",
+      "top": 120,
+      "left": -320,
+      "rotate": 90,
+      "attrs": {
+        "value": "292",
+        "travelLength": "60",
+        "label": "HR SENSOR"
+      }
+    },
+    {
+      "type": "wokwi-slide-potentiometer",
+      "id": "spo2Sensor",
+      "top": 300,
+      "left": -320,
+      "rotate": 90,
+      "attrs": {
+        "value": "920",
+        "travelLength": "60",
+        "label": "SpO2 SENSOR"
+      }
+    },
+    {
+      "type": "wokwi-ds18b20",
+      "id": "bodyTemperatureSensor",
+      "top": 470,
+      "left": -280,
+      "attrs": {
+        "temperature": "36.6",
+        "deviceID": "310820260009"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "temperaturePullup",
+      "top": 450,
+      "left": -170,
+      "rotate": 90,
+      "attrs": {
+        "value": "4700"
+      }
+    },
+    {
+      "type": "wokwi-photoresistor-sensor",
+      "id": "lightSensor",
+      "top": 455,
+      "left": 520,
+      "attrs": {
+        "lux": "500",
+        "threshold": "2.5"
+      }
+    },
+    {
+      "type": "board-bmp180",
+      "id": "environmentSensor",
+      "top": -180,
+      "left": 110,
+      "attrs": {
+        "temperature": "28",
+        "pressure": "101325"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "hapticIndicator",
+      "top": 455,
+      "left": 300,
+      "attrs": {
+        "color": "blue",
+        "label": "VIBRATION / HAPTIC"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "hapticResistor",
+      "top": 455,
+      "left": 245,
+      "rotate": 90,
+      "attrs": {
+        "value": "220"
+      }
     }
   ],
   "connections": [
@@ -127,7 +223,39 @@
 
     ["esp32:2", "statusResistor:1", "green", []],
     ["statusResistor:2", "statusLed:A", "green", []],
-    ["statusLed:C", "esp32:GND.2", "black", []]
+    ["statusLed:C", "esp32:GND.2", "black", []],
+
+    ["motionSensor:VCC", "esp32:3V3", "red", []],
+    ["motionSensor:GND", "esp32:GND.1", "black", []],
+    ["motionSensor:SDA", "esp32:21", "green", []],
+    ["motionSensor:SCL", "esp32:22", "blue", []],
+
+    ["heartRateSensor:VCC", "esp32:3V3", "red", []],
+    ["heartRateSensor:GND", "esp32:GND.1", "black", []],
+    ["heartRateSensor:SIG", "esp32:34", "orange", []],
+
+    ["spo2Sensor:VCC", "esp32:3V3", "red", []],
+    ["spo2Sensor:GND", "esp32:GND.1", "black", []],
+    ["spo2Sensor:SIG", "esp32:35", "purple", []],
+
+    ["bodyTemperatureSensor:VCC", "esp32:3V3", "red", []],
+    ["bodyTemperatureSensor:GND", "esp32:GND.1", "black", []],
+    ["bodyTemperatureSensor:DQ", "esp32:5", "yellow", []],
+    ["temperaturePullup:1", "esp32:3V3", "red", []],
+    ["temperaturePullup:2", "esp32:5", "yellow", []],
+
+    ["lightSensor:VCC", "esp32:3V3", "red", []],
+    ["lightSensor:GND", "esp32:GND.2", "black", []],
+    ["lightSensor:AO", "esp32:33", "orange", []],
+
+    ["environmentSensor:VCC", "esp32:3V3", "red", []],
+    ["environmentSensor:GND", "esp32:GND.1", "black", []],
+    ["environmentSensor:SDA", "esp32:21", "green", []],
+    ["environmentSensor:SCL", "esp32:22", "blue", []],
+
+    ["esp32:23", "hapticResistor:1", "blue", []],
+    ["hapticResistor:2", "hapticIndicator:A", "blue", []],
+    ["hapticIndicator:C", "esp32:GND.2", "black", []]
   ],
   "dependencies": {},
   "serialMonitor": {

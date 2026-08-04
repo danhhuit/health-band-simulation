@@ -5,6 +5,10 @@
     container_name: health-band-node-red
     ports:
       - "1880:1880"
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash}
+      NODE_RED_CREDENTIAL_SECRET: ${NODE_RED_CREDENTIAL_SECRET:-health-band-local-demo-secret}
     volumes:
       - ./node-red/data:/data
     restart: unless-stopped

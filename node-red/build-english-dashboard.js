@@ -19,7 +19,8 @@ const removedIds = new Set([
   'gHr', 'gSpo2', 'gBat', 'tSteps', 'tStatus', 'chart1',
   'btnN', 'btnH', 'btnL', 'btnF', 'btnB', 'btnR',
   'gDashboard', 'dashboardUI',
-  'eventIn', 'eventParse', 'statusIn', 'statusParse', 'alertIn', 'alertParse'
+  'eventIn', 'eventParse', 'statusIn', 'statusParse', 'alertIn', 'alertParse',
+  'geminiHttpIn', 'geminiAdvice', 'geminiHttpOut'
 ])
 
 const output = flows.filter(node => !removedIds.has(node.id))
@@ -66,10 +67,11 @@ for (const node of output) {
         'if(Buffer.isBuffer(p))p=p.toString("utf8");',
         'for(var i=0;i<2&&typeof p==="string";i++)p=JSON.parse(p);',
         'if(!p||typeof p!=="object"||Array.isArray(p))throw new Error("Payload is not an object");',
-        'var w=[];var req=["deviceId","timestamp","seq","heartRate","spo2","steps","fallDetected","battery","signalQuality","mode"];',
+        'var w=[];var req=["deviceId","timestamp","seq","heartRate","spo2","bloodPressure","steps","fallDetected","battery","signalQuality","mode","profile","gender","wearing","wearMode","vitalDataValid","sleep","recovery"];',
         'req.forEach(function(k){if(p[k]===undefined||p[k]===null)w.push("Missing required field: "+k);});',
-        'if(Number(p.heartRate)<40||Number(p.heartRate)>200)w.push("Heart rate is outside the supported 40-200 BPM range.");',
-        'if(Number(p.spo2)<70||Number(p.spo2)>100)w.push("SpO2 is outside the supported 70-100% range.");',
+        'if(Number(p.heartRate)<0||Number(p.heartRate)>200)w.push("Heart rate is outside the supported 0-200 BPM range.");',
+        'if(Number(p.spo2)<0||Number(p.spo2)>100)w.push("SpO2 is outside the supported 0-100% range.");',
+        'if(p.wearing===false&&(Number(p.heartRate)!==0||Number(p.spo2)!==0))w.push("Off-wrist telemetry must not contain active vitals.");',
         'if(Number(p.battery)<0||Number(p.battery)>100)w.push("Battery is outside the supported 0-100% range.");',
         'if(Number(p.steps)<0)w.push("Step count cannot be negative.");',
         'var sq=["good","medium","poor"];if(sq.indexOf(p.signalQuality)<0)w.push("Unknown signal-quality value.");',
@@ -90,15 +92,18 @@ for (const node of output) {
       node.func = [
         'var d=msg.payload||{};var a=[];var ac=global.get("ac")||{};var counters=global.get("alertCounters")||{};var n=Date.now();',
         'var profile=d.profile||global.get("healthProfile")||"student";',
-        'var thresholds={student:{high:120,low:50,spo2:94},older_adult:{high:110,low:50,spo2:94},athlete:{high:130,low:45,spo2:93}}[profile]||{high:120,low:50,spo2:94};',
-        'var key=d.deviceId||"health-band-01";var c=counters[key]||{high:0,low:0,spo2:0};',
-        'c.high=d.heartRate>thresholds.high?Math.min(3,c.high+1):0;',
-        'c.low=d.heartRate<thresholds.low?Math.min(3,c.low+1):0;',
-        'c.spo2=d.spo2<thresholds.spo2?Math.min(3,c.spo2+1):0;',
+        'var thresholds={student:{high:120,low:50,spo2:94},older_adult:{high:110,low:50,spo2:94},athlete:{high:130,low:45,spo2:93},child:{high:115,low:55,spo2:95}}[profile]||{high:120,low:50,spo2:94};',
+        'var key=d.deviceId||"health-band-01";var c=counters[key]||{high:0,low:0,spo2:0,temp:0};',
+        'var valid=d.wearing!==false&&d.vitalDataValid!==false;',
+        'c.high=valid&&d.heartRate>thresholds.high?Math.min(3,c.high+1):0;',
+        'c.low=valid&&d.heartRate>0&&d.heartRate<thresholds.low?Math.min(3,c.low+1):0;',
+        'c.spo2=valid&&d.spo2>0&&d.spo2<thresholds.spo2?Math.min(3,c.spo2+1):0;',
+        'c.temp=valid&&Number(d.bodyTemperatureC)>=38?Math.min(3,(c.temp||0)+1):0;',
         'counters[key]=c;global.set("alertCounters",counters);',
         'if(c.high>=3)a.push({deviceId:d.deviceId,type:"HIGH_HEART_RATE",severity:"warning",value:d.heartRate,threshold:thresholds.high,sourceSeq:d.seq,timestamp:n,message:"High heart rate confirmed across 3 samples: "+d.heartRate+" BPM"});',
         'if(c.low>=3)a.push({deviceId:d.deviceId,type:"LOW_HEART_RATE",severity:"warning",value:d.heartRate,threshold:thresholds.low,sourceSeq:d.seq,timestamp:n,message:"Low heart rate confirmed across 3 samples: "+d.heartRate+" BPM"});',
         'if(c.spo2>=3)a.push({deviceId:d.deviceId,type:"LOW_SPO2",severity:"warning",value:d.spo2,threshold:thresholds.spo2,sourceSeq:d.seq,timestamp:n,message:"Low blood oxygen confirmed across 3 samples: "+d.spo2+"%"});',
+        'if(c.temp>=3)a.push({deviceId:d.deviceId,type:"HIGH_BODY_TEMPERATURE",severity:"warning",value:d.bodyTemperatureC,threshold:38,sourceSeq:d.seq,timestamp:n,message:"High body temperature confirmed across 3 samples: "+d.bodyTemperatureC+" C"});',
         'if(d.fallDetected===true)a.push({deviceId:d.deviceId,type:"FALL_DETECTED",severity:"critical",value:true,threshold:null,sourceSeq:d.seq,timestamp:n,message:"Fall detected"});',
         'if(d.battery<=20)a.push({deviceId:d.deviceId,type:"LOW_BATTERY",severity:"warning",value:d.battery,threshold:20,sourceSeq:d.seq,timestamp:n,message:"Low battery: "+d.battery+"%"});',
         'var stateKey=d.deviceId+"_a";var state=JSON.stringify(a.map(function(x){return x.type;}).sort());',
@@ -118,7 +123,7 @@ for (const node of output) {
       break
     case 'cmdF':
       node.name = 'Prepare Command'
-      node.func = 'if(msg.dashboardCommand!==true||!msg.payload||!msg.payload.command)return null;if(msg.payload.command==="setProfile"&&msg.payload.value)global.set("healthProfile",msg.payload.value);return{payload:msg.payload,topic:"iot31/nhom-thanh-danh/health-band/command"};'
+      node.func = 'if(msg.dashboardCommand!==true||!msg.payload||!msg.payload.command)return null;if(msg.payload.command==="setProfile"&&msg.payload.value)global.set("healthProfile",msg.payload.value);if(msg.payload.command==="setGender"&&msg.payload.value)global.set("healthGender",msg.payload.value);if(msg.payload.command==="setWearState"&&msg.payload.value)global.set("healthWearMode",msg.payload.value);return{payload:msg.payload,topic:"iot31/nhom-thanh-danh/health-band/command"};'
       break
     case 'cmdM':
       node.name = 'Publish Command'
@@ -266,6 +271,72 @@ output.push({
   x: 700,
   y: 140,
   wires: [['cmdF']]
+})
+
+output.push({
+  id: 'geminiHttpIn',
+  type: 'http in',
+  z: 'tab1',
+  name: 'Gemini Recommendation API',
+  url: '/health-band/api/ai-recommendation',
+  method: 'post',
+  upload: false,
+  swaggerDoc: '',
+  x: 260,
+  y: 440,
+  wires: [['geminiAdvice']]
+})
+
+output.push({
+  id: 'geminiAdvice',
+  type: 'function',
+  z: 'tab1',
+  name: 'Anonymize and Ask Gemini',
+  func: [
+    'return (async function(){',
+    'const apiKey=env.get("GEMINI_API_KEY");',
+    'const model=env.get("GEMINI_MODEL")||"gemini-3.5-flash";',
+    'msg.headers={"Content-Type":"application/json","Cache-Control":"no-store"};',
+    'if(!apiKey){msg.statusCode=503;msg.payload={ok:false,message:"GEMINI_API_KEY is not configured on the Node-RED server."};return msg;}',
+    'const p=(msg.payload&&typeof msg.payload==="object")?msg.payload:{};',
+    'const isVietnamese=p.language==="vi";const language=isVietnamese?"Vietnamese":"English";',
+    'const safe={profile:String(p.profile||"unknown").slice(0,24),gender:String(p.gender||"unknown").slice(0,12),wearCoveragePercent:Number(p.wearCoveragePercent||0),averageHeartRate:p.averageHeartRate==null?null:Number(p.averageHeartRate),averageSpO2:p.averageSpO2==null?null:Number(p.averageSpO2),averageBloodPressure:p.averageBloodPressure||null,steps:Number(p.steps||0),sleepHours:Number(p.sleepHours||0),sleepGoalHours:Number(p.sleepGoalHours||8),alerts:Array.isArray(p.alerts)?p.alerts.slice(0,10).map(String):[]};',
+    'const prompt=["You are a conservative wellness coach in an educational IoT simulation.","Reply in "+language+" using exactly 3 short, practical lines.","Do not use Markdown, headings, JSON, tone labels, style labels, diagnosis, prescriptions, or unsupported health claims.","Mention once that blood pressure and sleep are simulated estimates.","Recommend professional or emergency help only if the aggregate contains a clear red flag.","Aggregate JSON:",JSON.stringify(safe)].join("\\n");',
+    'const https=global.get("https");if(!https)throw new Error("Node-RED HTTPS module is unavailable.");',
+    'const body=JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0.2,maxOutputTokens:250}});',
+    'const data=await new Promise(function(resolve,reject){const request=https.request({hostname:"generativelanguage.googleapis.com",path:"/v1beta/models/"+encodeURIComponent(model)+":generateContent",method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":apiKey,"Content-Length":Buffer.byteLength(body)}},function(response){let raw="";response.setEncoding("utf8");response.on("data",function(chunk){raw+=chunk;});response.on("end",function(){let parsed={};try{parsed=JSON.parse(raw||"{}");}catch(error){return reject(new Error("Gemini returned invalid JSON."));}if(response.statusCode<200||response.statusCode>=300)return reject(new Error((parsed.error&&parsed.error.message)||("Gemini HTTP "+response.statusCode)));resolve(parsed);});});request.on("error",reject);request.setTimeout(25000,function(){request.destroy(new Error("Gemini request timed out after 25 seconds."));});request.write(body);request.end();});',
+    'const responseParts=(((data.candidates||[])[0]||{}).content||{}).parts||[];',
+    'const text=responseParts.map(function(part){return part.text||"";}).join("\\n").trim();',
+    'if(!text)throw new Error("Gemini returned no recommendation.");',
+    'const cleaned=text.replace(/```(?:json)?|```|\\*\\*/g,"").replace(/^\\s*(tone|style|format|response language)\\s*:\\s*.*$/gim,"").trim();',
+    'const aiLines=cleaned.split(/\\r?\\n|(?<=[.!?])\\s+(?=[A-ZÀ-Ỹ])/).map(function(line){return line.trim().replace(/^[-•\\d.]+\\s*/,"");}).filter(function(line){const complete=/[.!?]$/.test(line)&&line.length>12&&line.length<220&&!/[()]/.test(line);const languageOk=!isVietnamese||/[À-ỹ]|\\b(hãy|bạn|nên|duy trì|theo dõi|ngủ|sức khỏe)\\b/i.test(line);return complete&&languageOk;});',
+    'const localLines=isVietnamese?["Tóm tắt: dữ liệu hiện tại cần được theo dõi theo xu hướng, không kết luận từ một lần đo.","Hành động: duy trì vận động vừa phải, ngủ theo mục tiêu đã đặt và kiểm tra lại khi có cảnh báo lặp lại.","Lưu ý: huyết áp và giấc ngủ trong đồ án là ước tính mô phỏng, không dùng để chẩn đoán."]:["Summary: follow the trend rather than interpreting a single reading.","Action: maintain moderate activity, follow the sleep goal, and review repeated alerts.","Note: blood pressure and sleep are simulated estimates, not diagnostic measurements."];',
+    'const lines=aiLines.slice(0,1);while(lines.length<2)lines.push(localLines[lines.length]);lines.push(localLines[2]);',
+    'const recommendation=lines.slice(0,3).map(function(line,index){return (index+1)+". "+line;}).join("\\n");',
+    'msg.statusCode=200;msg.payload={ok:true,recommendation:recommendation,model:model,privacy:"anonymized aggregates only",disclaimer:"Educational wellness guidance; not medical advice."};return msg;',
+    '})().catch(function(error){msg.statusCode=502;msg.payload={ok:false,message:error.message};return msg;});'
+  ].join(''),
+  outputs: 1,
+  timeout: 30,
+  noerr: 0,
+  initialize: '',
+  finalize: '',
+  libs: [],
+  x: 520,
+  y: 440,
+  wires: [['geminiHttpOut']]
+})
+
+output.push({
+  id: 'geminiHttpOut',
+  type: 'http response',
+  z: 'tab1',
+  name: 'Gemini API Response',
+  statusCode: '',
+  headers: {},
+  x: 780,
+  y: 440,
+  wires: []
 })
 
 fs.writeFileSync(flowPath, JSON.stringify(output, null, 2) + '\n', 'utf8')

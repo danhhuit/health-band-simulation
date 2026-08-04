@@ -87,7 +87,7 @@
             <span class="flag">🇺🇸</span><span>English</span>
           </button>
         </div>
-        <span class="today">{{ formattedDate }}</span>
+        <span class="today global-clock"><v-icon icon="mdi-clock-outline" size="15"></v-icon>{{ formattedDate }} · {{ formattedTime }}</span>
         <span class="connection" :class="{ online: isOnline }">
           <i></i>{{ isOnline ? tr('Connected') : tr('Disconnected') }}
         </span>
@@ -101,17 +101,17 @@
       <button :class="{ active: activeView === 'twin' }" @click="activeView = 'twin'">
         <v-icon icon="mdi-watch-variant"></v-icon>{{ tr('Digital twin') }}
       </button>
-      <button :class="{ active: activeView === 'architecture' }" @click="activeView = 'architecture'">
-        <v-icon icon="mdi-layers-triple-outline"></v-icon>{{ tr('IoT architecture') }}
-      </button>
-      <button :class="{ active: activeView === 'presenter' }" @click="activeView = 'presenter'">
-        <v-icon icon="mdi-presentation-play"></v-icon>{{ tr('Presenter mode') }}
-      </button>
       <button :class="{ active: activeView === 'smart' }" @click="activeView = 'smart'">
         <v-icon icon="mdi-brain"></v-icon>{{ tr('Smart coach') }}
       </button>
+      <button :class="{ active: activeView === 'profile' }" @click="activeView = 'profile'">
+        <v-icon icon="mdi-account-heart-outline"></v-icon>{{ tr('Health profile') }}
+      </button>
       <button :class="{ active: activeView === 'guide' }" @click="activeView = 'guide'">
         <v-icon icon="mdi-book-open-page-variant-outline"></v-icon>{{ tr('App guide') }}
+      </button>
+      <button :class="{ active: activeView === 'activity' }" @click="activeView = 'activity'">
+        <v-icon icon="mdi-history"></v-icon>{{ tr('Activity log') }}
       </button>
     </nav>
 
@@ -122,6 +122,10 @@
         <h2 v-if="emergency.active">{{ tr('Fall detected — sending simulated help in') }} {{ emergency.countdown }}s</h2>
         <h2 v-else>{{ tr('Simulated emergency notification sent') }}</h2>
         <p>{{ tr('This is a classroom simulation. No real emergency service is contacted.') }}</p>
+        <p v-if="telemetry.location.valid">
+          <v-icon icon="mdi-map-marker" size="13"></v-icon>
+          {{ telemetry.location.latitude.toFixed(5) }}, {{ telemetry.location.longitude.toFixed(5) }}
+        </p>
       </div>
       <button v-if="emergency.active" @click="cancelEmergency">
         <v-icon icon="mdi-close-circle-outline"></v-icon>{{ tr('I am safe — cancel') }}
@@ -179,6 +183,20 @@
 
         <article class="metric-card">
           <div class="metric-head">
+            <span class="metric-icon pressure"><v-icon icon="mdi-heart-flash"></v-icon></span>
+            <span>{{ tr('Blood pressure') }}</span>
+          </div>
+          <div class="metric-reading blood-pressure-reading">
+            <strong>{{ telemetry.vitalDataValid ? `${telemetry.bloodPressure.systolic}/${telemetry.bloodPressure.diastolic}` : '—' }}</strong><small>mmHg</small>
+          </div>
+          <div class="metric-foot">
+            <span class="neutral">{{ tr('Estimated') }}</span>
+            <span>{{ tr('Simulation only') }}</span>
+          </div>
+        </article>
+
+        <article class="metric-card">
+          <div class="metric-head">
             <span class="metric-icon steps"><v-icon icon="mdi-walk"></v-icon></span>
             <span>{{ tr('Steps') }}</span>
           </div>
@@ -222,6 +240,47 @@
         <button @click="activeView = 'smart'">
           <v-icon icon="mdi-arrow-right-circle-outline"></v-icon>{{ tr('Open Smart coach') }}
         </button>
+      </div>
+    </section>
+
+    <section class="section-block">
+      <div class="section-title">
+        <div>
+          <h2>{{ tr('Extended sensor readings') }}</h2>
+          <p>{{ tr('Temperature, light, pressure, altitude, location and haptic feedback') }}</p>
+        </div>
+      </div>
+      <div class="sensor-grid">
+        <article class="sensor-card">
+          <v-icon icon="mdi-thermometer"></v-icon>
+          <span>{{ tr('Body temperature') }}</span>
+          <strong>{{ telemetry.bodyTemperatureC.toFixed(1) }} <small>°C</small></strong>
+          <em>{{ telemetry.bodyTemperatureC >= 38 ? tr('High') : tr('In range') }}</em>
+        </article>
+        <article class="sensor-card">
+          <v-icon icon="mdi-white-balance-sunny"></v-icon>
+          <span>{{ tr('Ambient light') }}</span>
+          <strong>{{ Math.round(telemetry.ambientLightLux) }} <small>lux</small></strong>
+          <em>{{ telemetry.displayMode === 'dim' ? tr('OLED dim') : tr('OLED bright') }}</em>
+        </article>
+        <article class="sensor-card">
+          <v-icon icon="mdi-gauge"></v-icon>
+          <span>{{ tr('Air pressure') }}</span>
+          <strong>{{ Math.round(telemetry.environment.pressurePa / 100) }} <small>hPa</small></strong>
+          <em>{{ telemetry.environment.altitudeM.toFixed(1) }} m</em>
+        </article>
+        <article class="sensor-card">
+          <v-icon icon="mdi-map-marker-outline"></v-icon>
+          <span>{{ tr('GPS location') }}</span>
+          <strong class="sensor-coordinate">{{ telemetry.location.valid ? telemetry.location.latitude.toFixed(5) : '—' }}</strong>
+          <em>{{ telemetry.location.valid ? telemetry.location.longitude.toFixed(5) : tr('No fix') }}</em>
+        </article>
+        <article class="sensor-card">
+          <v-icon icon="mdi-vibrate"></v-icon>
+          <span>{{ tr('Haptic output') }}</span>
+          <strong>{{ telemetry.hapticActive ? tr('Active') : tr('Standby') }}</strong>
+          <em>{{ tr('Simulated vibration motor') }}</em>
+        </article>
       </div>
     </section>
 
@@ -269,12 +328,17 @@
           <div><dt>{{ tr('Connection') }}</dt><dd><span class="mini-dot" :class="{ online: isOnline }"></span>{{ isOnline ? tr('Online') : tr('Offline') }}</dd></div>
           <div><dt>{{ tr('Signal quality') }}</dt><dd>{{ signalText }}</dd></div>
           <div><dt>{{ tr('Active scenario') }}</dt><dd>{{ activeModeLabel }}</dd></div>
+          <div><dt>{{ tr('Data source') }}</dt><dd>{{ telemetry.dataSource === 'sensors' ? tr('Live sensors') : tr('Scenario override') }}</dd></div>
+          <div><dt>{{ tr('Sensor health') }}</dt><dd>{{ telemetry.sensorHealth === 'ok' ? tr('All sensors ready') : tr('Sensor degraded') }}</dd></div>
+          <div><dt>{{ tr('Acceleration') }}</dt><dd>{{ Number(telemetry.motion.magnitude || 0).toFixed(1) }} m/s²</dd></div>
           <div><dt>{{ tr('Sequence number') }}</dt><dd>#{{ telemetry.seq }}</dd></div>
           <div><dt>{{ tr('Update interval') }}</dt><dd>{{ samplingIntervalLabel }}</dd></div>
         </dl>
         <div class="device-note">
           <v-icon icon="mdi-information-outline" size="18"></v-icon>
-          {{ tr('Values are generated by an ESP32 simulation in Wokwi.') }}
+          {{ telemetry.dataSource === 'sensors'
+            ? tr('Values are read from interactive HR, SpO2 and MPU6050 sensor inputs in Wokwi.')
+            : tr('The selected teaching scenario temporarily overrides sensor values.') }}
         </div>
       </aside>
     </section>
@@ -304,6 +368,9 @@
           </button>
           <button :class="{ selected: activeMode === 'low_battery' }" @click="sendMode('low_battery')">
             <v-icon icon="mdi-battery-alert"></v-icon><span><strong>{{ tr('Low battery') }}</strong><small>12–19%</small></span>
+          </button>
+          <button :class="{ selected: activeMode === 'sleep' }" @click="sendMode('sleep')">
+            <v-icon icon="mdi-sleep"></v-icon><span><strong>{{ tr('Sleep') }}</strong><small>{{ tr('Sensor-fusion demo') }}</small></span>
           </button>
         </div>
         <button class="reset-button" @click="resetSteps"><v-icon icon="mdi-restart" size="18"></v-icon>{{ tr('Reset step counter') }}</button>
@@ -335,20 +402,6 @@
         <p class="medical-note">{{ tr('For educational demonstration only. This dashboard is not intended for medical diagnosis.') }}</p>
       </aside>
     </section>
-    <section class="panel activity-panel overview-activity">
-      <div class="section-title panel-title">
-        <div><h2>{{ tr('Recent activity') }}</h2><p>{{ tr('Commands and acknowledgements across the IoT system') }}</p></div>
-        <span class="event-total">{{ activity.length }}</span>
-      </div>
-      <div class="activity-list">
-        <div v-for="item in activity.slice(0, 6)" :key="item.id" class="activity-row">
-          <span class="activity-time">{{ item.time }}</span>
-          <span class="activity-source" :class="item.sourceClass">{{ tr(item.source) }}</span>
-          <div><strong>{{ tr(item.title) }}</strong><p>{{ tr(item.detail) }}</p></div>
-        </div>
-        <div v-if="!activity.length" class="empty-activity">{{ tr('Interact with the dashboard to create a traceable event.') }}</div>
-      </div>
-    </section>
     </section>
 
     <section v-show="activeView === 'twin'" class="interactive-view">
@@ -374,7 +427,7 @@
                   <div><v-icon icon="mdi-heart-pulse"></v-icon><strong>{{ telemetry.heartRate }}</strong><small>BPM</small></div>
                   <div><v-icon icon="mdi-water-percent"></v-icon><strong>{{ telemetry.spo2 }}</strong><small>SpO₂</small></div>
                 </div>
-                <div class="watch-footer"><v-icon icon="mdi-walk" size="13"></v-icon>{{ telemetry.steps }} {{ tr('steps') }} · {{ activeModeLabel }}</div>
+                <div class="watch-footer"><v-icon icon="mdi-walk" size="13"></v-icon>{{ telemetry.steps }} · BP {{ telemetry.bloodPressure.systolic }}/{{ telemetry.bloodPressure.diastolic }} · {{ sleepStageLabel }}</div>
               </div>
               <span class="device-led" :class="rgbState"></span>
             </div>
@@ -413,94 +466,137 @@
           </article>
         </aside>
       </div>
-    </section>
 
-    <section v-show="activeView === 'architecture'" class="interactive-view">
-      <div class="view-heading">
-        <div><span>{{ tr('System learning mode') }}</span><h2>{{ tr('Four-layer IoT architecture') }}</h2><p>{{ tr('Select a layer to explain its responsibility and its implementation in this project.') }}</p></div>
-        <button class="journey-button" @click="playDataJourney"><v-icon icon="mdi-play"></v-icon>{{ journeyRunning ? tr('Playing data journey') : tr('Play data journey') }}</button>
-      </div>
-
-      <div class="architecture-flow">
-        <button v-for="(layer, index) in architectureLayers" :key="layer.id"
-                class="layer-card" :class="[layer.tone, { selected: selectedLayer === index, pulse: journeyStep === index }]"
-                @click="selectedLayer = index">
-          <span class="layer-number">0{{ index + 1 }}</span>
-          <v-icon :icon="layer.icon" size="28"></v-icon>
-          <strong>{{ tr(layer.name) }}</strong>
-          <small>{{ tr(layer.short) }}</small>
-        </button>
-        <div class="flow-line"><i :style="{ width: ((journeyStep + 1) * 25) + '%' }"></i></div>
-      </div>
-
-      <div class="architecture-detail">
-        <article class="panel selected-layer">
-          <span class="layer-kicker">{{ tr('LAYER') }} 0{{ selectedLayer + 1 }}</span>
-          <h2>{{ tr(selectedLayerData.name) }}</h2>
-          <p class="layer-purpose">{{ tr(selectedLayerData.purpose) }}</p>
-          <div class="layer-info-grid">
-            <div><span>{{ tr('Components in this project') }}</span><strong>{{ tr(selectedLayerData.components) }}</strong></div>
-            <div><span>{{ tr('What it does') }}</span><strong>{{ tr(selectedLayerData.operation) }}</strong></div>
-            <div><span>{{ tr('Why it matters') }}</span><strong>{{ tr(selectedLayerData.value) }}</strong></div>
-            <div><span>{{ tr('Evidence during demo') }}</span><strong>{{ tr(selectedLayerData.evidence) }}</strong></div>
-          </div>
-        </article>
-        <aside class="panel payload-panel">
-          <div class="section-title panel-title"><div><h2>{{ tr('Live data packet') }}</h2><p>{{ tr('JSON traveling through the four layers') }}</p></div></div>
-          <pre>{{ livePacket }}</pre>
-          <div class="topic-chip"><span>{{ tr('MQTT topic') }}</span><strong>.../health-band/telemetry</strong></div>
-        </aside>
-      </div>
-    </section>
-
-    <section v-show="activeView === 'presenter'" class="interactive-view">
-      <div class="view-heading">
-        <div><span>{{ tr('Guided classroom demo') }}</span><h2>{{ tr('Presenter mode') }}</h2><p>{{ tr('Use this sequence to involve the audience and explain each system reaction.') }}</p></div>
-        <span class="step-counter">{{ tr('Step') }} {{ presenterIndex + 1 }} / {{ presenterSteps.length }}</span>
-      </div>
-
-      <div class="presenter-layout">
-        <article class="panel presenter-card">
-          <div class="presenter-progress"><i :style="{ width: ((presenterIndex + 1) / presenterSteps.length * 100) + '%' }"></i></div>
-          <span class="presenter-label">{{ tr(presenterStep.label) }}</span>
-          <h2>{{ tr(presenterStep.title) }}</h2>
-          <p>{{ tr(presenterStep.description) }}</p>
-          <div class="audience-prompt">
-            <v-icon icon="mdi-account-voice"></v-icon>
-            <div><span>{{ tr('Ask the audience') }}</span><strong>{{ tr(presenterStep.question) }}</strong></div>
-          </div>
-          <div class="expected-result">
-            <span>{{ tr('Expected result') }}</span>
-            <p>{{ tr(presenterStep.expected) }}</p>
-          </div>
-          <div class="presenter-actions">
-            <button @click="previousPresenterStep" :disabled="presenterIndex === 0"><v-icon icon="mdi-chevron-left"></v-icon>{{ tr('Previous') }}</button>
-            <button class="run-step" @click="runPresenterStep"><v-icon icon="mdi-play-circle-outline"></v-icon>{{ tr('Run this step') }}</button>
-            <button @click="nextPresenterStep" :disabled="presenterIndex === presenterSteps.length - 1">{{ tr('Next') }}<v-icon icon="mdi-chevron-right"></v-icon></button>
-          </div>
-        </article>
-
-        <aside class="panel presenter-live">
-          <div class="section-title panel-title"><div><h2>{{ tr('Live proof') }}</h2><p>{{ tr('Observe the result while presenting') }}</p></div></div>
-          <div class="proof-reading"><span>{{ tr('Heart rate') }}</span><strong>{{ telemetry.heartRate }} BPM</strong></div>
-          <div class="proof-reading"><span>{{ tr('Blood oxygen') }}</span><strong>{{ telemetry.spo2 }}%</strong></div>
-          <div class="proof-reading"><span>{{ tr('Device mode') }}</span><strong>{{ activeModeLabel }}</strong></div>
-          <div class="proof-reading"><span>{{ tr('Active alerts') }}</span><strong>{{ activeAlerts.length }}</strong></div>
-          <div class="proof-reading"><span>{{ tr('Device response') }}</span><strong>{{ lastAcknowledgement || tr('Waiting') }}</strong></div>
-        </aside>
-      </div>
-
-      <article class="panel activity-panel presenter-activity">
-        <div class="section-title panel-title"><div><h2>{{ tr('End-to-end event timeline') }}</h2><p>{{ tr('A trace of audience action, device response and rule evaluation') }}</p></div></div>
-        <div class="activity-list">
-          <div v-for="item in activity" :key="item.id" class="activity-row">
-            <span class="activity-time">{{ item.time }}</span>
-            <span class="activity-source" :class="item.sourceClass">{{ tr(item.source) }}</span>
-            <div><strong>{{ tr(item.title) }}</strong><p>{{ tr(item.detail) }}</p></div>
-          </div>
-          <div v-if="!activity.length" class="empty-activity">{{ tr('Run a presenter step to begin the trace.') }}</div>
+      <section class="section-block advanced-wellness">
+        <div class="section-title">
+          <div><h2>{{ tr('Personalization and sleep') }}</h2><p>{{ tr('Wear-aware settings and sleep tracking') }}</p></div>
         </div>
-      </article>
+        <div class="advanced-grid">
+          <article class="panel compact-panel">
+            <div class="section-title panel-title"><div><h2>{{ tr('User and wear state') }}</h2><p>{{ tr('The device remains online when it is not being worn') }}</p></div></div>
+            <div class="inline-controls">
+              <label>{{ tr('Profile') }}
+                <select :value="profile" @change="selectProfile($event.target.value)">
+                  <option v-for="item in profiles" :key="item.id" :value="item.id">{{ tr(item.name) }}</option>
+                </select>
+              </label>
+              <label>{{ tr('Gender') }}
+                <select :value="gender" @change="setGender($event.target.value)">
+                  <option value="male">{{ tr('Male') }}</option>
+                  <option value="female">{{ tr('Female') }}</option>
+                </select>
+              </label>
+            </div>
+            <div class="wear-controls">
+              <button v-for="item in wearModes" :key="item.id" :class="{ selected: wearMode === item.id }" @click="setWearMode(item.id)">
+                <v-icon :icon="item.icon" size="17"></v-icon>{{ tr(item.label) }}
+              </button>
+            </div>
+            <div class="wear-result" :class="{ off: !telemetry.wearing }">
+              <v-icon :icon="telemetry.wearing ? 'mdi-watch-check-outline' : 'mdi-watch-off-outline'"></v-icon>
+              <div><strong>{{ telemetry.wearing ? tr('Worn') : tr('Off wrist') }}</strong><p>{{ telemetry.wearing ? tr('Valid samples can be included in reports.') : tr('Vitals and sleep are excluded; connection remains online.') }}</p></div>
+            </div>
+          </article>
+
+          <article class="panel compact-panel">
+            <div class="section-title panel-title"><div><h2>{{ tr('Automatic sleep tracking') }}</h2><p>{{ tr('Accelerometer + heart rate + SpO₂ + skin temperature + time') }}</p></div></div>
+            <div class="sleep-summary">
+              <span class="sleep-icon"><v-icon icon="mdi-sleep"></v-icon></span>
+              <div><strong>{{ sleepStageLabel }}</strong><p>{{ tr('Confidence') }} {{ telemetry.sleep.confidence }}%</p></div>
+              <b>{{ formattedSleepDuration }}</b>
+            </div>
+            <div class="inline-controls">
+              <label>{{ tr('Bedtime') }}<input v-model="sleepSettings.bedtime" type="time" @change="saveSleepSettings"></label>
+              <label>{{ tr('Wake time') }}<input v-model="sleepSettings.wakeTime" type="time" @change="saveSleepSettings"></label>
+              <label>{{ tr('Sleep goal') }}<input v-model.number="sleepSettings.goalHours" type="number" min="4" max="12" step="0.5" @change="saveSleepSettings"></label>
+            </div>
+            <p class="medical-note">{{ sleepRecommendation }}</p>
+          </article>
+
+          <article class="panel compact-panel gemini-panel">
+            <div class="section-title panel-title"><div><h2>{{ tr('Gemini wellness assistant') }}</h2><p>{{ tr('Optional AI recommendation from anonymized report aggregates') }}</p></div><button class="small-action" @click="requestGeminiAdvice" :disabled="gemini.loading">{{ gemini.loading ? tr('Analyzing') : tr('Ask Gemini') }}</button></div>
+            <div class="gemini-result"><v-icon icon="mdi-creation-outline"></v-icon><p>{{ gemini.message || tr('Configure GEMINI_API_KEY on the Node-RED server, then request a non-diagnostic suggestion.') }}</p></div>
+            <p class="medical-note">{{ tr('No name, GPS coordinate, device ID or raw history is sent to Gemini.') }}</p>
+          </article>
+        </div>
+      </section>
+    </section>
+
+    <section v-show="activeView === 'profile'" class="interactive-view profile-view">
+      <div class="view-heading">
+        <div>
+          <span>{{ tr('Personal health setup') }}</span>
+          <h2>{{ tr('Health profile') }}</h2>
+          <p>{{ tr('Enter basic body information to receive transparent, non-diagnostic analysis.') }}</p>
+        </div>
+        <span class="profile-save-state">
+          <v-icon icon="mdi-shield-lock-outline" size="16"></v-icon>
+          {{ profileSavedAt ? tr('Saved in this browser') : tr('Not saved yet') }}
+        </span>
+      </div>
+
+      <div class="health-profile-grid">
+        <form class="panel personal-form" @submit.prevent="savePersonalMetrics">
+          <div class="section-title panel-title">
+            <div><h2>{{ tr('Basic information') }}</h2><p>{{ tr('Used only for local educational analysis') }}</p></div>
+          </div>
+          <div class="personal-form-grid">
+            <label>
+              <span>{{ tr('Age') }}</span>
+              <div class="input-with-unit"><input v-model.number="personalMetrics.age" type="number" min="5" max="120" required><small>{{ tr('years') }}</small></div>
+            </label>
+            <label>
+              <span>{{ tr('Height') }}</span>
+              <div class="input-with-unit"><input v-model.number="personalMetrics.heightCm" type="number" min="80" max="230" step="0.1" required><small>cm</small></div>
+            </label>
+            <label>
+              <span>{{ tr('Weight') }}</span>
+              <div class="input-with-unit"><input v-model.number="personalMetrics.weightKg" type="number" min="15" max="300" step="0.1" required><small>kg</small></div>
+            </label>
+            <label>
+              <span>{{ tr('Activity level') }}</span>
+              <select v-model="personalMetrics.activityLevel">
+                <option v-for="item in activityLevels" :key="item.id" :value="item.id">{{ tr(item.label) }}</option>
+              </select>
+            </label>
+          </div>
+          <div class="personal-gender">
+            <span>{{ tr('Gender') }}</span>
+            <button type="button" :class="{ selected: gender === 'male' }" @click="setGender('male')"><v-icon icon="mdi-gender-male"></v-icon>{{ tr('Male') }}</button>
+            <button type="button" :class="{ selected: gender === 'female' }" @click="setGender('female')"><v-icon icon="mdi-gender-female"></v-icon>{{ tr('Female') }}</button>
+          </div>
+          <div class="profile-form-actions">
+            <button class="primary" type="submit"><v-icon icon="mdi-content-save-check-outline"></v-icon>{{ tr('Save and analyze') }}</button>
+            <button type="button" @click="resetPersonalMetrics"><v-icon icon="mdi-restore"></v-icon>{{ tr('Reset') }}</button>
+          </div>
+          <p class="privacy-note"><v-icon icon="mdi-lock-outline" size="15"></v-icon>{{ tr('These values stay in browser storage and are included only when you export a backup.') }}</p>
+        </form>
+
+        <article class="panel personal-analysis">
+          <div class="section-title panel-title"><div><h2>{{ tr('Personal analysis') }}</h2><p>{{ tr('Every conclusion shows the rule used') }}</p></div></div>
+          <div class="analysis-summary">
+            <div class="bmi-result" :class="personalBmiTone">
+              <span>BMI</span>
+              <strong>{{ personalBmi ? personalBmi.toFixed(1) : '—' }}</strong>
+              <small>{{ personalBmiLabel }}</small>
+            </div>
+            <div class="sleep-target-result">
+              <v-icon icon="mdi-bed-clock"></v-icon>
+              <span>{{ tr('Suggested sleep') }}</span>
+              <strong>{{ recommendedSleepText }}</strong>
+              <button @click="applyRecommendedSleepGoal" :disabled="!personalProfileReady">{{ tr('Apply as sleep goal') }}</button>
+            </div>
+          </div>
+          <div class="personal-insights">
+            <div v-for="item in personalAnalysisItems" :key="item.code" :class="item.tone">
+              <v-icon :icon="item.icon"></v-icon>
+              <div><strong>{{ item.title }}</strong><p>{{ item.detail }}</p></div>
+            </div>
+          </div>
+          <p class="medical-note">{{ tr('BMI is a screening measure. This simulation does not diagnose disease or replace professional assessment.') }}</p>
+        </article>
+      </div>
+
     </section>
 
     <section v-show="activeView === 'smart'" class="interactive-view smart-view">
@@ -561,6 +657,11 @@
               <v-icon :icon="item.icon"></v-icon>
               <span><strong>{{ tr(item.name) }}</strong><small>{{ tr(item.description) }}</small></span>
             </button>
+          </div>
+          <div class="gender-options">
+            <span>{{ tr('Gender') }}</span>
+            <button :class="{ selected: gender === 'male' }" @click="setGender('male')"><v-icon icon="mdi-gender-male"></v-icon>{{ tr('Male') }}</button>
+            <button :class="{ selected: gender === 'female' }" @click="setGender('female')"><v-icon icon="mdi-gender-female"></v-icon>{{ tr('Female') }}</button>
           </div>
           <dl class="threshold-list">
             <div><dt>{{ tr('High HR threshold') }}</dt><dd>&gt; {{ activeThresholds.highHr }} BPM</dd></div>
@@ -634,7 +735,7 @@
         </div>
         <div class="automation-layout">
           <div class="automation-progress"><i :style="{ width: guidedDemoProgress + '%' }"></i></div>
-          <strong>{{ guidedDemo.running ? tr(guidedDemo.sequence[guidedDemo.index].label) : tr('Normal → High HR → Low SpO₂ → Fall → Low battery → Recovery') }}</strong>
+          <strong>{{ guidedDemo.running ? tr(guidedDemo.sequence[guidedDemo.index].label) : tr('Twin → Normal → Alerts → Sleep → Fall → Recovery') }}</strong>
           <p>{{ tr('Each step sends a real MQTT command and waits for device telemetry to return.') }}</p>
           <div>
             <button v-if="!guidedDemo.running" @click="startGuidedDemo"><v-icon icon="mdi-play"></v-icon>{{ tr('Start automatic demo') }}</button>
@@ -670,6 +771,63 @@
         </div>
       </article>
     </section>
+
+    <section v-show="activeView === 'activity'" class="interactive-view activity-log-view">
+      <div class="view-heading">
+        <div>
+          <span>{{ tr('Stored history and recovery') }}</span>
+          <h2>{{ tr('Activity log') }}</h2>
+          <p>{{ tr('Review generated reports, recovery checkpoints and recent end-to-end events.') }}</p>
+        </div>
+        <span class="event-total">{{ activity.length }} {{ tr('events') }}</span>
+      </div>
+
+      <div class="activity-log-grid">
+        <article class="panel compact-panel">
+          <div class="section-title panel-title">
+            <div><h2>{{ tr('Automatic reports') }}</h2><p>{{ tr('Hourly, daily and monthly summaries') }}</p></div>
+            <button class="small-action" @click="generateReportNow('manual')">{{ tr('Generate now') }}</button>
+          </div>
+          <div class="report-list">
+            <div v-for="kind in ['hourly','daily','monthly']" :key="kind">
+              <span>{{ tr(kind.charAt(0).toUpperCase() + kind.slice(1)) }}</span>
+              <strong>{{ reportStatus(kind) }}</strong>
+              <button @click="downloadLatestReport(kind)" :disabled="!latestReport(kind)"><v-icon icon="mdi-download-outline" size="15"></v-icon></button>
+            </div>
+          </div>
+          <p>{{ tr('Only valid worn samples are aggregated; missing wear time is reported as coverage, not as zero health values.') }}</p>
+        </article>
+
+        <article class="panel compact-panel">
+          <div class="section-title panel-title"><div><h2>{{ tr('Backup and recovery') }}</h2><p>{{ tr('Three checkpoints protect the classroom demo') }}</p></div></div>
+          <ol class="recovery-list">
+            <li><b>ESP32 NVS</b><span>{{ tr('Steps, battery, profile, gender and modes every 30 seconds.') }}</span></li>
+            <li><b>Browser</b><span>{{ tr('Current and previous dashboard snapshots in local storage.') }}</span></li>
+            <li><b>Docker</b><span>{{ tr('Node-RED data persists in the mounted data volume.') }}</span></li>
+          </ol>
+          <div class="backup-actions">
+            <button @click="exportBackup"><v-icon icon="mdi-content-save-outline"></v-icon>{{ tr('Export backup') }}</button>
+            <label><v-icon icon="mdi-backup-restore"></v-icon>{{ tr('Restore backup') }}<input type="file" accept="application/json" @change="importBackup"></label>
+          </div>
+          <p>{{ tr('Last checkpoint') }}: {{ lastCheckpointText }} · {{ telemetry.recovery.stateRestored ? tr('Restored after restart') : tr('Running normally') }}</p>
+        </article>
+      </div>
+
+      <article class="panel activity-panel activity-log-timeline">
+        <div class="section-title panel-title">
+          <div><h2>{{ tr('Recent activity') }}</h2><p>{{ tr('Commands and acknowledgements across the IoT system') }}</p></div>
+          <span class="event-total">{{ activity.length }}</span>
+        </div>
+        <div class="activity-list">
+          <div v-for="item in activity" :key="item.id" class="activity-row">
+            <span class="activity-time">{{ item.time }}</span>
+            <span class="activity-source" :class="item.sourceClass">{{ tr(item.source) }}</span>
+            <div><strong>{{ tr(item.title) }}</strong><p>{{ tr(item.detail) }}</p></div>
+          </div>
+          <div v-if="!activity.length" class="empty-activity">{{ tr('Interact with the dashboard to create a traceable event.') }}</div>
+        </div>
+      </article>
+    </section>
   </main>
 </template>
 
@@ -686,8 +844,70 @@ export default {
   'Overview': 'Tổng quan',
   'Digital twin': 'Vòng tay số',
   'IoT architecture': 'Kiến trúc IoT',
-  'Presenter mode': 'Chế độ thuyết trình',
+  'Health profile': 'Hồ sơ sức khỏe',
   'App guide': 'Hướng dẫn ứng dụng',
+  'Activity log': 'Nhật ký hoạt động',
+  'Stored history and recovery': 'Lịch sử đã lưu và phục hồi',
+  'Review generated reports, recovery checkpoints and recent end-to-end events.': 'Xem báo cáo đã tạo, các điểm phục hồi và sự kiện đầu cuối gần đây.',
+  'events': 'sự kiện',
+  'Personalization and sleep': 'Cá nhân hóa và giấc ngủ',
+  'Wear-aware settings and sleep tracking': 'Thiết lập nhận biết trạng thái đeo và theo dõi giấc ngủ',
+  'For evidence and recovery': 'Dành cho bằng chứng và phục hồi',
+  'Keeps generated reports, recovery controls and the complete recent event timeline in one place.': 'Tập hợp báo cáo đã tạo, công cụ phục hồi và toàn bộ dòng sự kiện gần đây tại một nơi.',
+  'Hourly, daily and monthly reports': 'Báo cáo theo giờ, ngày và tháng',
+  'Export and restore dashboard backup': 'Xuất và phục hồi bản sao lưu Dashboard',
+  'ESP32, browser and Docker recovery checkpoints': 'Điểm phục hồi ESP32, trình duyệt và Docker',
+  'Commands, acknowledgements and alerts': 'Lệnh, phản hồi xác nhận và cảnh báo',
+  'Generate a report, export a backup and point to the event created by the latest scenario.': 'Tạo báo cáo, xuất bản sao lưu và chỉ ra sự kiện do tình huống mới nhất tạo ra.',
+  'Personal health setup': 'Thiết lập sức khỏe cá nhân',
+  'Enter basic body information to receive transparent, non-diagnostic analysis.': 'Nhập thông tin cơ thể cơ bản để nhận phân tích minh bạch, không mang tính chẩn đoán.',
+  'Saved in this browser': 'Đã lưu trong trình duyệt này',
+  'Not saved yet': 'Chưa lưu',
+  'Basic information': 'Thông tin cơ bản',
+  'Used only for local educational analysis': 'Chỉ dùng cho phân tích học tập trên máy',
+  'Age': 'Tuổi',
+  'years': 'tuổi',
+  'Height': 'Chiều cao',
+  'Weight': 'Cân nặng',
+  'Activity level': 'Mức độ vận động',
+  'Mostly sedentary': 'Ít vận động',
+  'Light activity': 'Vận động nhẹ',
+  'Moderate activity': 'Vận động vừa',
+  'Highly active': 'Vận động nhiều',
+  'Save and analyze': 'Lưu và phân tích',
+  'Reset': 'Đặt lại',
+  'These values stay in browser storage and are included only when you export a backup.': 'Các giá trị này chỉ lưu trong trình duyệt và chỉ được đưa vào khi bạn xuất bản sao lưu.',
+  'Personal analysis': 'Phân tích cá nhân',
+  'Every conclusion shows the rule used': 'Mỗi kết luận đều nêu quy tắc được sử dụng',
+  'Suggested sleep': 'Thời lượng ngủ gợi ý',
+  'Apply as sleep goal': 'Áp dụng làm mục tiêu ngủ',
+  'BMI is a screening measure. This simulation does not diagnose disease or replace professional assessment.': 'BMI là chỉ số sàng lọc. Mô phỏng này không chẩn đoán bệnh hoặc thay thế đánh giá chuyên môn.',
+  'Complete the profile': 'Hãy nhập đủ hồ sơ',
+  'Requires BMI-for-age percentile': 'Cần phân vị BMI theo tuổi',
+  'Below adult healthy range': 'Thấp hơn khoảng khỏe mạnh của người lớn',
+  'Adult healthy range': 'Trong khoảng khỏe mạnh của người lớn',
+  'Above adult healthy range': 'Cao hơn khoảng khỏe mạnh của người lớn',
+  'Adult obesity screening range': 'Thuộc khoảng sàng lọc béo phì ở người lớn',
+  '10–13 hours': '10–13 giờ',
+  '9–12 hours': '9–12 giờ',
+  '8–10 hours': '8–10 giờ',
+  'At least 7 hours': 'Ít nhất 7 giờ',
+  '7–9 hours': '7–9 giờ',
+  '7–8 hours': '7–8 giờ',
+  'Complete the basic information': 'Nhập đủ thông tin cơ bản',
+  'Age, height and weight are required before local analysis can run.': 'Cần nhập tuổi, chiều cao và cân nặng trước khi chạy phân tích trên máy.',
+  'Child and teen BMI needs a percentile': 'BMI trẻ em và thiếu niên cần phân vị',
+  'Age-based sleep target': 'Mục tiêu ngủ theo độ tuổi',
+  'Activity context': 'Bối cảnh vận động',
+  'Check the allowed age, height and weight ranges.': 'Hãy kiểm tra khoảng tuổi, chiều cao và cân nặng cho phép.',
+  'Local BMI and sleep guidance have been updated.': 'Đã cập nhật BMI và hướng dẫn giấc ngủ trên máy.',
+  'For personal setup': 'Dành cho thiết lập cá nhân',
+  'Stores basic body information locally and explains BMI and age-based sleep guidance.': 'Lưu thông tin cơ thể cơ bản trên máy và giải thích BMI cùng hướng dẫn ngủ theo độ tuổi.',
+  'Age, height, weight, gender and activity level': 'Tuổi, chiều cao, cân nặng, giới tính và mức vận động',
+  'Transparent adult BMI calculation': 'Cách tính BMI người lớn minh bạch',
+  'Child and teen percentile limitation': 'Giới hạn phân vị đối với trẻ em và thiếu niên',
+  'Six-step explanation of sensor-fusion sleep tracking': 'Giải thích sáu bước theo dõi giấc ngủ bằng kết hợp cảm biến',
+  'Enter a sample profile, save it, inspect the BMI rule, then apply the suggested sleep goal.': 'Nhập hồ sơ mẫu, lưu lại, xem quy tắc BMI rồi áp dụng mục tiêu ngủ gợi ý.',
   'Current status': 'Trạng thái hiện tại',
   'Last synced': 'Đồng bộ gần nhất',
   'Waiting for data': 'Đang chờ dữ liệu',
@@ -713,8 +933,31 @@ export default {
   'Online': 'Trực tuyến',
   'Offline': 'Ngoại tuyến',
   'Signal quality': 'Chất lượng tín hiệu',
-  'Active scenario': 'Tình huống đang chạy',
-  'Sequence number': 'Số thứ tự bản tin',
+      'Active scenario': 'Tình huống đang chạy',
+      'Data source': 'Nguồn dữ liệu',
+      'Extended sensor readings': 'Các chỉ số cảm biến mở rộng',
+      'Temperature, light, pressure, altitude, location and haptic feedback': 'Nhiệt độ, ánh sáng, áp suất, độ cao, vị trí và phản hồi rung',
+      'Body temperature': 'Nhiệt độ cơ thể',
+      'High body temperature': 'Nhiệt độ cơ thể cao',
+      'Ambient light': 'Ánh sáng môi trường',
+      'OLED dim': 'OLED giảm sáng',
+      'OLED bright': 'OLED tăng sáng',
+      'Air pressure': 'Áp suất không khí',
+      'GPS location': 'Vị trí GPS',
+      'No fix': 'Chưa có vị trí',
+      'Haptic output': 'Phản hồi rung',
+      'Active': 'Đang rung',
+      'Standby': 'Chờ',
+      'Simulated vibration motor': 'Motor rung mô phỏng',
+      'Live sensors': 'Cảm biến trực tiếp',
+      'Scenario override': 'Kịch bản ghi đè',
+      'Sensor health': 'Trạng thái cảm biến',
+      'All sensors ready': 'Tất cả cảm biến sẵn sàng',
+      'Sensor degraded': 'Cảm biến suy giảm',
+      'Acceleration': 'Gia tốc',
+      'Values are read from interactive HR, SpO2 and MPU6050 sensor inputs in Wokwi.': 'Giá trị được đọc từ đầu vào cảm biến HR, SpO₂ tương tác và MPU6050 trong Wokwi.',
+      'The selected teaching scenario temporarily overrides sensor values.': 'Kịch bản giảng dạy đang chọn tạm thời ghi đè giá trị cảm biến.',
+      'Sequence number': 'Số thứ tự bản tin',
   'Update interval': 'Chu kỳ cập nhật',
   '2 seconds': '2 giây',
   'Values are generated by an ESP32 simulation in Wokwi.': 'Các giá trị được tạo bởi ESP32 mô phỏng trên Wokwi.',
@@ -797,7 +1040,6 @@ export default {
   'Waiting': 'Đang chờ',
   'End-to-end event timeline': 'Dòng sự kiện đầu cuối',
   'A trace of audience action, device response and rule evaluation': 'Dấu vết từ thao tác người xem, phản hồi thiết bị đến đánh giá luật',
-  'Run a presenter step to begin the trace.': 'Chạy một bước thuyết trình để bắt đầu ghi dấu vết.',
   'Built-in documentation': 'Tài liệu tích hợp',
   'Application guide': 'Hướng dẫn toàn bộ ứng dụng',
   'Understand every page, control and observable result before presenting the project.': 'Hiểu từng trang, nút điều khiển và kết quả cần quan sát trước khi thuyết trình.',
@@ -808,7 +1050,6 @@ export default {
   'For the end user': 'Dành cho người sử dụng',
   'For the technical explanation': 'Dành cho phần giải thích kỹ thuật',
   'For the live demonstration': 'Dành cho phần demo trực tiếp',
-  'For the presenter': 'Dành cho người thuyết trình',
   'For learning the application': 'Dành cho người mới sử dụng',
   'Shows the current health state and all live measurements in one place.': 'Hiển thị trạng thái sức khỏe và các chỉ số trực tiếp tại một nơi.',
   'Status banner explains whether readings are normal, warning or critical.': 'Thanh trạng thái cho biết dữ liệu bình thường, cảnh báo hay nghiêm trọng.',
@@ -828,11 +1069,6 @@ export default {
   'The detail panel explains components, operation, value and evidence.': 'Bảng chi tiết giải thích thành phần, hoạt động, giá trị và bằng chứng.',
   'Data Journey animates one telemetry packet through the system.': 'Hành trình dữ liệu mô phỏng một gói telemetry đi qua hệ thống.',
   'Use Play data journey, then click each layer while explaining the live JSON packet.': 'Chạy Hành trình dữ liệu, sau đó chọn từng tầng khi giải thích gói JSON.',
-  'Guides a six-step classroom presentation and audience interaction.': 'Hướng dẫn bài trình bày sáu bước và tương tác với người xem.',
-  'Each step provides talking points, a question and expected evidence.': 'Mỗi bước có nội dung nói, câu hỏi và bằng chứng mong đợi.',
-  'Run this step sends the relevant command or opens the relevant view.': 'Chạy bước này sẽ gửi lệnh hoặc mở đúng trang liên quan.',
-  'Live proof and timeline show the current end-to-end result.': 'Bằng chứng trực tiếp và timeline cho thấy kết quả đầu cuối.',
-  'Invite the audience to choose a scenario and run the corresponding presenter step.': 'Mời người xem chọn tình huống và chạy bước trình bày tương ứng.',
   'Explains every page and interactive control without leaving the app.': 'Giải thích từng trang và chức năng mà không cần rời ứng dụng.',
   'Use it before presenting or when another team member takes over the demo.': 'Dùng trước khi trình bày hoặc khi thành viên khác tiếp quản phần demo.',
   'Scenario buttons': 'Các nút tình huống',
@@ -898,8 +1134,8 @@ export default {
   'Parses JSON, checks demo thresholds, publishes alerts and records the latest device interaction.': 'Parse JSON, kiểm tra ngưỡng demo, publish cảnh báo và ghi nhận tương tác thiết bị.',
   'It proves the project does more than display numbers: it applies rules and makes decisions.': 'Chứng minh đồ án không chỉ hiển thị số mà còn áp dụng luật và ra quyết định.',
   'Health alerts, command acknowledgement and the end-to-end activity timeline.': 'Cảnh báo sức khỏe, phản hồi lệnh và timeline hoạt động đầu cuối.',
-  'This is the human-facing layer used by the presenter and the audience.': 'Đây là tầng dành cho người thuyết trình và người xem.',
-  'Overview, Digital Twin, Architecture Explorer, Presenter Mode and evidence views.': 'Tổng quan, Vòng tay số, Kiến trúc, Chế độ thuyết trình và các màn hình bằng chứng.',
+  'This is the human-facing layer used by the user and the audience.': 'Đây là tầng dành cho người dùng và người xem.',
+  'Overview, Digital Twin, Architecture Explorer, Health Profile, Smart Coach and evidence views.': 'Tổng quan, Vòng tay số, Kiến trúc, Hồ sơ sức khỏe, Trợ lý thông minh và các màn hình bằng chứng.',
   'Visualizes readings, sends commands, explains the system and guides an interactive demonstration.': 'Trực quan hóa chỉ số, gửi lệnh, giải thích hệ thống và hướng dẫn demo tương tác.',
   'It makes the IoT system understandable and lets viewers participate in the scenario.': 'Giúp hệ thống IoT dễ hiểu và cho phép người xem tham gia tình huống.',
   'The audience selects a scenario and watches the wearable, alerts and timeline respond.': 'Người xem chọn tình huống và quan sát vòng tay, cảnh báo cùng timeline phản hồi.',
@@ -1047,6 +1283,73 @@ export default {
   'Light and dark theme': 'Giao diện sáng và tối',
   'Collects important network changes, device events, alerts, emergency actions and data-quality failures.': 'Tập hợp thay đổi mạng, sự kiện thiết bị, cảnh báo, hành động khẩn cấp và lỗi chất lượng dữ liệu.',
   'Uses the moon or sun control to switch the complete dashboard theme and saves the preference in this browser.': 'Dùng nút mặt trăng hoặc mặt trời để đổi toàn bộ giao diện và lưu lựa chọn trong trình duyệt.',
+  'Blood pressure': 'Huyết áp',
+  'Estimated': 'Ước tính',
+  'Simulation only': 'Chỉ mô phỏng',
+  'Sleep': 'Giấc ngủ',
+  'Sensor-fusion demo': 'Demo hợp nhất cảm biến',
+  'Personalization, sleep and reports': 'Cá nhân hóa, giấc ngủ và báo cáo',
+  'Wear-aware analytics with recoverable local history': 'Phân tích có xét trạng thái đeo và lịch sử có thể phục hồi',
+  'User and wear state': 'Người dùng và trạng thái đeo',
+  'The device remains online when it is not being worn': 'Thiết bị vẫn trực tuyến khi không được đeo',
+  'Profile': 'Đối tượng',
+  'Gender': 'Giới tính',
+  'Male': 'Nam',
+  'Female': 'Nữ',
+  'Child': 'Trẻ em',
+  'Age-aware demo thresholds, guardian context and a smaller step goal.': 'Ngưỡng demo theo độ tuổi, bối cảnh người giám hộ và mục tiêu bước nhỏ hơn.',
+  'Auto detect': 'Tự nhận biết',
+  'Worn': 'Đang đeo',
+  'Off wrist': 'Tháo khỏi tay',
+  'Valid samples can be included in reports.': 'Mẫu hợp lệ được đưa vào báo cáo.',
+  'Vitals and sleep are excluded; connection remains online.': 'Chỉ số sinh tồn và giấc ngủ bị loại khỏi phân tích; kết nối vẫn trực tuyến.',
+  'Automatic sleep tracking': 'Theo dõi giấc ngủ tự động',
+  'Accelerometer + heart rate + SpO₂ + skin temperature + time': 'Gia tốc kế + nhịp tim + SpO₂ + nhiệt độ da + thời gian',
+  'Confidence': 'Độ tin cậy',
+  'Bedtime': 'Giờ đi ngủ',
+  'Wake time': 'Giờ thức dậy',
+  'Sleep goal': 'Mục tiêu ngủ',
+  'Not tracked': 'Không theo dõi',
+  'Awake': 'Đang thức',
+  'Checking sleep': 'Đang xác minh giấc ngủ',
+  'Light sleep': 'Ngủ nông',
+  'Deep sleep': 'Ngủ sâu',
+  'Automatic reports': 'Báo cáo tự động',
+  'Hourly, daily and monthly summaries': 'Tổng hợp theo giờ, ngày và tháng',
+  'Generate now': 'Tạo ngay',
+  'Hourly': 'Theo giờ',
+  'Daily': 'Theo ngày',
+  'Monthly': 'Theo tháng',
+  'Waiting for enough data': 'Đang chờ đủ dữ liệu',
+  'Only valid worn samples are aggregated; missing wear time is reported as coverage, not as zero health values.': 'Chỉ mẫu hợp lệ khi đeo được tổng hợp; thời gian không đeo được tính vào độ phủ, không biến thành chỉ số sức khỏe bằng 0.',
+  'Backup and recovery': 'Sao lưu và phục hồi',
+  'Three checkpoints protect the classroom demo': 'Ba lớp checkpoint bảo vệ buổi demo',
+  'Steps, battery, profile, gender and modes every 30 seconds.': 'Lưu bước chân, pin, đối tượng, giới tính và chế độ mỗi 30 giây.',
+  'Current and previous dashboard snapshots in local storage.': 'Lưu bản hiện tại và bản trước của dashboard trong bộ nhớ trình duyệt.',
+  'Node-RED data persists in the mounted data volume.': 'Dữ liệu Node-RED được giữ trong volume đã gắn.',
+  'Export backup': 'Xuất bản sao lưu',
+  'Restore backup': 'Phục hồi bản sao lưu',
+  'Last checkpoint': 'Checkpoint gần nhất',
+  'Pending': 'Đang chờ',
+  'Restored after restart': 'Đã phục hồi sau khởi động lại',
+  'Running normally': 'Đang chạy bình thường',
+  'Gemini wellness assistant': 'Trợ lý sức khỏe Gemini',
+  'Optional AI recommendation from anonymized report aggregates': 'Khuyến nghị AI tùy chọn từ dữ liệu tổng hợp đã ẩn danh',
+  'Ask Gemini': 'Hỏi Gemini',
+  'Analyzing': 'Đang phân tích',
+  'Configure GEMINI_API_KEY on the Node-RED server, then request a non-diagnostic suggestion.': 'Cấu hình GEMINI_API_KEY trên máy chủ Node-RED rồi yêu cầu khuyến nghị không mang tính chẩn đoán.',
+  'No name, GPS coordinate, device ID or raw history is sent to Gemini.': 'Không gửi tên, tọa độ GPS, mã thiết bị hoặc lịch sử thô đến Gemini.',
+  'Device online — not being worn': 'Thiết bị trực tuyến — hiện không đeo',
+  'The system preserves connection and state while excluding missing health samples from reports.': 'Hệ thống giữ kết nối và trạng thái, đồng thời loại mẫu sức khỏe bị thiếu khỏi báo cáo.',
+  'Band is not being worn': 'Vòng tay hiện không được đeo',
+  'Connection and step state are preserved, but vitals and sleep are excluded from analysis until the band is worn again.': 'Kết nối và trạng thái bước chân được giữ lại, nhưng chỉ số sinh tồn và giấc ngủ không được phân tích đến khi đeo lại.',
+  'Planned bedtime has started': 'Đã đến giờ ngủ dự kiến',
+  'Reduce screen light and prepare for the configured sleep goal.': 'Giảm ánh sáng màn hình và chuẩn bị cho mục tiêu ngủ đã đặt.',
+  'Sleep cannot be inferred while the band is off wrist; this period is marked as missing coverage.': 'Không thể suy luận giấc ngủ khi tháo vòng; khoảng thời gian này được đánh dấu thiếu độ phủ.',
+  'Sleep is being inferred from combined motion, heart-rate, SpO₂, temperature and time evidence.': 'Giấc ngủ đang được suy luận từ chuyển động, nhịp tim, SpO₂, nhiệt độ và thời gian.',
+  'No confirmed sleep session yet. The classroom demo uses accelerated 15–30 second thresholds.': 'Chưa xác nhận phiên ngủ. Demo lớp học dùng ngưỡng tăng tốc 15–30 giây.',
+  'The band is online but off wrist, so health scoring is paused instead of treating missing values as zero.': 'Vòng tay vẫn trực tuyến nhưng đang tháo khỏi tay, vì vậy điểm sức khỏe được tạm dừng thay vì xem dữ liệu thiếu là 0.',
+  'Local fallback because Gemini is not configured.': 'Dùng khuyến nghị cục bộ vì Gemini chưa được cấu hình.',
   'Dashboard ready': 'Dashboard đã sẵn sàng',
   'Notification center is ready to receive device events and alerts.': 'Trung tâm thông báo đã sẵn sàng nhận sự kiện thiết bị và cảnh báo.'
       },
@@ -1054,6 +1357,7 @@ export default {
         deviceId: 'health-band-01',
         heartRate: 0,
         spo2: 0,
+        bloodPressure: { systolic: 0, diastolic: 0, source: 'simulated_estimate', medicalGrade: false },
         steps: 0,
         battery: 0,
         fallDetected: false,
@@ -1062,8 +1366,42 @@ export default {
         mode: 'normal',
         timestamp: 0,
         profile: 'student',
+        gender: 'male',
+        wearing: true,
+        wearMode: 'auto',
+        vitalDataValid: false,
         powerMode: 'normal',
         samplingIntervalMs: 2000
+        ,
+        dataSource: 'unknown',
+        sensorHealth: 'unknown',
+        heartRateRaw: 0,
+        spo2Raw: 0,
+        motion: {
+          accelX: 0,
+          accelY: 0,
+          accelZ: 0,
+          magnitude: 0,
+          detected: false
+        },
+        bodyTemperatureC: 0,
+        ambientLightLux: 0,
+        displayMode: 'bright',
+        environment: {
+          temperatureC: 0,
+          pressurePa: 101325,
+          altitudeM: 0
+        },
+        location: {
+          latitude: 0,
+          longitude: 0,
+          valid: false,
+          source: 'serial_nmea',
+          updatedAt: 0
+        },
+        hapticActive: false,
+        sleep: { stage: 'awake', confidence: 0, candidateSinceMs: 0, detectedStartMs: 0, durationMs: 0, model: 'sensor_fusion_demo', timeWindowMatched: false },
+        recovery: { stateRestored: false, checkpointSequence: 0, checkpointIntervalMs: 30000 }
       },
       history: [],
       normalBaseline: null,
@@ -1071,8 +1409,39 @@ export default {
       stepGoalInput: Number(localStorage.getItem('healthBandStepGoal')) || 6000,
       stepGoalCustomized: localStorage.getItem('healthBandStepGoalCustomized') === 'true',
       profile: localStorage.getItem('healthBandProfile') || 'student',
+      gender: localStorage.getItem('healthBandGender') || 'male',
+      personalMetrics: (() => {
+        const defaults = { age: null, heightCm: null, weightKg: null, activityLevel: 'moderate' }
+        try {
+          return { ...defaults, ...JSON.parse(localStorage.getItem('healthBandPersonalMetrics') || '{}') }
+        } catch (error) {
+          return defaults
+        }
+      })(),
+      profileSavedAt: Number(localStorage.getItem('healthBandPersonalMetricsSavedAt')) || 0,
+      activityLevels: [
+        { id: 'sedentary', label: 'Mostly sedentary' },
+        { id: 'light', label: 'Light activity' },
+        { id: 'moderate', label: 'Moderate activity' },
+        { id: 'active', label: 'Highly active' }
+      ],
+      wearMode: localStorage.getItem('healthBandWearMode') || 'auto',
+      wearModes: [
+        { id: 'auto', label: 'Auto detect', icon: 'mdi-auto-fix' },
+        { id: 'worn', label: 'Worn', icon: 'mdi-watch-check-outline' },
+        { id: 'off_wrist', label: 'Off wrist', icon: 'mdi-watch-off-outline' }
+      ],
+      sleepSettings: {
+        bedtime: localStorage.getItem('healthBandBedtime') || '22:30',
+        wakeTime: localStorage.getItem('healthBandWakeTime') || '06:30',
+        goalHours: Number(localStorage.getItem('healthBandSleepGoal')) || 8
+      },
+      reports: { hourly: [], daily: [], monthly: [] },
+      reportAccumulators: { hourly: null, daily: null, monthly: null },
+      lastCheckpointAt: 0,
+      gemini: { loading: false, message: '', source: 'local' },
       powerMode: 'normal',
-      alertCounters: { highHr: 0, lowHr: 0, lowSpo2: 0 },
+      alertCounters: { highHr: 0, lowHr: 0, lowSpo2: 0, highTemp: 0 },
       confirmedAlertCodes: [],
       acknowledgedAlerts: {},
       dataQualityWarnings: [],
@@ -1087,9 +1456,11 @@ export default {
         index: 0,
         timer: null,
         sequence: [
+          { action: 'view-twin', label: 'Meet the Health Band' },
           { mode: 'normal', label: 'Normal' },
           { mode: 'high_hr', label: 'High heart rate' },
           { mode: 'low_spo2', label: 'Low SpO₂' },
+          { mode: 'sleep', label: 'Sleep sensor fusion' },
           { mode: 'fall', label: 'Fall detected' },
           { mode: 'low_battery', label: 'Low battery' },
           { mode: 'normal', label: 'Recovery' }
@@ -1109,114 +1480,11 @@ export default {
       lastAcknowledgement: '',
       activity: [],
       activityId: 0,
-      selectedLayer: 0,
-      journeyStep: -1,
-      journeyRunning: false,
-      presenterIndex: 0,
       profiles: [
         { id: 'student', name: 'Student', description: 'Balanced daily activity and general wellness.', icon: 'mdi-school-outline', suggestedGoal: 6000 },
         { id: 'older_adult', name: 'Older adult', description: 'More conservative demo thresholds and a moderate activity goal.', icon: 'mdi-account-heart-outline', suggestedGoal: 4000 },
-        { id: 'athlete', name: 'Athlete', description: 'Higher activity target and wider heart-rate demo range.', icon: 'mdi-run-fast', suggestedGoal: 10000 }
-      ],
-      architectureLayers: [
-        {
-          id: 'device',
-          name: 'Device layer',
-          short: 'Sense and act',
-          icon: 'mdi-watch-variant',
-          tone: 'device',
-          purpose: 'This layer represents the physical or simulated wearable that interacts with the user and the environment.',
-          components: 'ESP32, OLED display, FALL button, RGB LED, buzzer and simulated health sensors.',
-          operation: 'Generates heart rate, SpO2, step, fall and battery data. It also receives commands and changes its physical outputs.',
-          value: 'It is the source of observable health data and the place where actions become visible to the audience.',
-          evidence: 'Wokwi OLED values, LED color, buzzer sound, FALL button and the virtual band on this app.'
-        },
-        {
-          id: 'network',
-          name: 'Network layer',
-          short: 'Transport messages',
-          icon: 'mdi-access-point-network',
-          tone: 'network',
-          purpose: 'This layer connects the wearable to the rest of the system using lightweight IoT communication.',
-          components: 'Wokwi-GUEST Wi-Fi, EMQX MQTT broker and the telemetry/status/command/event topics.',
-          operation: 'Moves JSON messages between publishers and subscribers with a clear topic contract.',
-          value: 'It decouples the device from the application, so each part can be developed and tested independently.',
-          evidence: 'MQTT nodes show connected and the live JSON packet advances through this architecture view.'
-        },
-        {
-          id: 'processing',
-          name: 'Processing layer',
-          short: 'Validate and decide',
-          icon: 'mdi-sitemap-outline',
-          tone: 'processing',
-          purpose: 'This layer turns raw telemetry into useful system state, alerts and traceable events.',
-          components: 'Node-RED parsing functions, threshold rules, offline detection and event routing.',
-          operation: 'Parses JSON, checks demo thresholds, publishes alerts and records the latest device interaction.',
-          value: 'It proves the project does more than display numbers: it applies rules and makes decisions.',
-          evidence: 'Health alerts, command acknowledgement and the end-to-end activity timeline.'
-        },
-        {
-          id: 'application',
-          name: 'Application layer',
-          short: 'Explain and interact',
-          icon: 'mdi-monitor-dashboard',
-          tone: 'application',
-          purpose: 'This is the human-facing layer used by the presenter and the audience.',
-          components: 'Overview, Digital Twin, Architecture Explorer, Presenter Mode and evidence views.',
-          operation: 'Visualizes readings, sends commands, explains the system and guides an interactive demonstration.',
-          value: 'It makes the IoT system understandable and lets viewers participate in the scenario.',
-          evidence: 'The audience selects a scenario and watches the wearable, alerts and timeline respond.'
-        }
-      ],
-      presenterSteps: [
-        {
-          label: 'Introduction',
-          title: 'Meet the Health Band',
-          description: 'Introduce the virtual wearable and point out the OLED, RGB state light, buzzer and FALL button.',
-          question: 'Which measurements would you expect a personal health band to monitor?',
-          expected: 'The audience identifies heart rate, blood oxygen, steps, fall state and battery.',
-          action: 'view-twin'
-        },
-        {
-          label: 'Architecture',
-          title: 'Follow one telemetry packet',
-          description: 'Show how a reading moves from the ESP32 through MQTT and Node-RED to the application.',
-          question: 'Why should the device publish to a broker instead of directly updating the web page?',
-          expected: 'The four layers are shown in order and the MQTT packet remains independent of the user interface.',
-          action: 'journey'
-        },
-        {
-          label: 'Baseline',
-          title: 'Establish normal readings',
-          description: 'Return the device to its normal simulation range before introducing abnormal scenarios.',
-          question: 'Do these readings require attention?',
-          expected: 'HR 70-90 BPM, SpO2 97-99%, green LED and no active alerts.',
-          mode: 'normal'
-        },
-        {
-          label: 'Audience choice',
-          title: 'Simulate high heart rate',
-          description: 'Let a viewer trigger a high heart-rate scenario and observe the complete system reaction.',
-          question: 'What should change first: the band, the broker, the rule engine or the dashboard?',
-          expected: 'ESP32 acknowledges the command, HR becomes 125-145 BPM, LED turns amber and an alert appears.',
-          mode: 'high_hr'
-        },
-        {
-          label: 'Safety event',
-          title: 'Trigger the FALL / SOS button',
-          description: 'Use the red Wokwi button, the F keyboard shortcut or the virtual band control.',
-          question: 'How should a safety-critical event look different from a health warning?',
-          expected: 'The band shows FALL, the LED turns red, the buzzer sounds and a critical alert is created.',
-          mode: 'fall'
-        },
-        {
-          label: 'Recovery',
-          title: 'Recover the system',
-          description: 'Return to normal and show that warnings clear while the event history remains traceable.',
-          question: 'Why should the current alert disappear but the event remain in the timeline?',
-          expected: 'Current status returns to normal, the LED turns green and the historical event is preserved.',
-          mode: 'normal'
-        }
+        { id: 'athlete', name: 'Athlete', description: 'Higher activity target and wider heart-rate demo range.', icon: 'mdi-run-fast', suggestedGoal: 10000 },
+        { id: 'child', name: 'Child', description: 'Age-aware demo thresholds, guardian context and a smaller step goal.', icon: 'mdi-human-child', suggestedGoal: 5000 }
       ],
       guidePages: [
         {
@@ -1231,7 +1499,7 @@ export default {
             'Metric cards show heart rate, SpO₂, steps and battery.',
             'Trend charts preserve the latest 40 samples.',
             'Scenario controls send MQTT commands to ESP32.',
-            'Alerts and activity prove the processing result.'
+            'Health alerts prove the processing result.'
           ],
           demo: 'Start Wokwi, select Normal, then choose an abnormal scenario and compare the status, metric and alert panels.'
         },
@@ -1251,32 +1519,19 @@ export default {
           demo: 'Place Wokwi beside this page, trigger FALL/SOS and compare both screens.'
         },
         {
-          id: 'architecture',
-          target: 'architecture',
-          icon: 'mdi-layers-triple-outline',
-          audience: 'For the technical explanation',
-          title: 'IoT architecture',
-          purpose: 'Explains where every component belongs in the four-layer model.',
+          id: 'profile',
+          target: 'profile',
+          icon: 'mdi-account-heart-outline',
+          audience: 'For personal setup',
+          title: 'Health profile',
+          purpose: 'Stores basic body information locally and explains BMI and age-based sleep guidance.',
           features: [
-            'Layer cards select Device, Network, Processing or Application.',
-            'The detail panel explains components, operation, value and evidence.',
-            'Data Journey animates one telemetry packet through the system.'
+            'Age, height, weight, gender and activity level',
+            'Transparent adult BMI calculation',
+            'Child and teen percentile limitation',
+            'Age-based sleep target'
           ],
-          demo: 'Use Play data journey, then click each layer while explaining the live JSON packet.'
-        },
-        {
-          id: 'presenter',
-          target: 'presenter',
-          icon: 'mdi-presentation-play',
-          audience: 'For the presenter',
-          title: 'Presenter mode',
-          purpose: 'Guides a six-step classroom presentation and audience interaction.',
-          features: [
-            'Each step provides talking points, a question and expected evidence.',
-            'Run this step sends the relevant command or opens the relevant view.',
-            'Live proof and timeline show the current end-to-end result.'
-          ],
-          demo: 'Invite the audience to choose a scenario and run the corresponding presenter step.'
+          demo: 'Enter a sample profile, save it, inspect the BMI rule, then apply the suggested sleep goal.'
         },
         {
           id: 'smart',
@@ -1292,7 +1547,7 @@ export default {
             'Data quality monitor',
             'Guided smart demo'
           ],
-          demo: 'Set a personal step goal, choose a profile, run the automatic demo and export the session report.'
+          demo: 'Set a personal step goal, choose a profile and run the automatic demo.'
         },
         {
           id: 'guide',
@@ -1305,13 +1560,27 @@ export default {
             'Use it before presenting or when another team member takes over the demo.'
           ],
           demo: 'Read each card, then use Open this page to practice the described function.'
+        },
+        {
+          id: 'activity',
+          target: 'activity',
+          icon: 'mdi-history',
+          audience: 'For evidence and recovery',
+          title: 'Activity log',
+          purpose: 'Keeps generated reports, recovery controls and the complete recent event timeline in one place.',
+          features: [
+            'Hourly, daily and monthly reports',
+            'Export and restore dashboard backup',
+            'ESP32, browser and Docker recovery checkpoints',
+            'Commands, acknowledgements and alerts'
+          ],
+          demo: 'Generate a report, export a backup and point to the event created by the latest scenario.'
         }
       ],
       functionGlossary: [
         { name: 'Scenario buttons', description: 'Publish setMode commands and let the audience change device behavior.' },
         { name: 'Reset steps', description: 'Publishes resetSteps and proves two-way control.' },
         { name: 'FALL/SOS', description: 'Creates a critical fall event visible on Wokwi, MQTT, Node-RED and Dashboard.' },
-        { name: 'Data journey', description: 'Animates the path Device → Network → Processing → Application.' },
         { name: 'Language switch', description: 'Switches the interface between Vietnamese and English and saves the preference.' },
         { name: 'Notification center', description: 'Collects important network changes, device events, alerts, emergency actions and data-quality failures.' },
         { name: 'Light and dark theme', description: 'Uses the moon or sun control to switch the complete dashboard theme and saves the preference in this browser.' },
@@ -1334,6 +1603,11 @@ export default {
     formattedDate () {
       return new Intl.DateTimeFormat(this.language === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(this.now))
     },
+    formattedTime () {
+      return new Intl.DateTimeFormat(this.language === 'vi' ? 'vi-VN' : 'en-US', {
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false, timeZoneName: 'short'
+      }).format(new Date(this.now))
+    },
     watchTime () {
       return new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date(this.now))
     },
@@ -1350,14 +1624,16 @@ export default {
         low_hr: 'Low heart rate',
         low_spo2: 'Low SpO₂',
         fall: 'Fall detected',
-        low_battery: 'Low battery'
+        low_battery: 'Low battery',
+        sleep: 'Sleep'
       })[this.activeMode] || 'Normal')
     },
     activeThresholds () {
       return ({
         student: { highHr: 120, lowHr: 50, lowSpo2: 94 },
         older_adult: { highHr: 110, lowHr: 50, lowSpo2: 94 },
-        athlete: { highHr: 130, lowHr: 45, lowSpo2: 93 }
+        athlete: { highHr: 130, lowHr: 45, lowSpo2: 93 },
+        child: { highHr: 115, lowHr: 55, lowSpo2: 95 }
       })[this.profile] || { highHr: 120, lowHr: 50, lowSpo2: 94 }
     },
     stepProgress () {
@@ -1393,6 +1669,7 @@ export default {
       return 'critical'
     },
     scoreExplanation () {
+      if (this.isOnline && !this.telemetry.wearing) return this.tr('The band is online but off wrist, so health scoring is paused instead of treating missing values as zero.')
       if (!this.isOnline) return this.language === 'vi' ? 'Điểm giảm vì thiết bị đang offline.' : 'The score is reduced because the device is offline.'
       if (this.telemetry.fallDetected) return this.language === 'vi' ? 'Sự kiện té ngã làm giảm mạnh thành phần an toàn.' : 'The fall event strongly reduces the safety component.'
       if (this.activeAlerts.length) return this.language === 'vi' ? 'Một hoặc nhiều chỉ số đã được xác nhận bất thường.' : 'One or more readings have a confirmed abnormal state.'
@@ -1419,11 +1696,14 @@ export default {
     smartSuggestions () {
       const suggestions = []
       const vi = this.language === 'vi'
+      if (this.isOnline && !this.telemetry.wearing) suggestions.push({ code: 'off-wrist', tone: 'info', icon: 'mdi-watch-off-outline', title: this.tr('Band is not being worn'), detail: this.tr('Connection and step state are preserved, but vitals and sleep are excluded from analysis until the band is worn again.') })
+      if (this.telemetry.sleep.stage === 'awake' && this.isInsideSleepWindow) suggestions.push({ code: 'bedtime', tone: 'info', icon: 'mdi-weather-night', title: this.tr('Planned bedtime has started'), detail: this.tr('Reduce screen light and prepare for the configured sleep goal.') })
       if (!this.isOnline) suggestions.push({ code: 'offline', tone: 'critical', icon: 'mdi-wifi-off', title: vi ? 'Kiểm tra kết nối' : 'Check the connection', detail: vi ? 'Thiết bị không gửi dữ liệu; hãy kiểm tra Wokwi, Wi-Fi và broker.' : 'The device is not sending data; check Wokwi, Wi-Fi and the broker.' })
       if (this.telemetry.fallDetected) suggestions.push({ code: 'fall', tone: 'critical', icon: 'mdi-shield-alert-outline', title: vi ? 'Xác minh an toàn ngay' : 'Verify safety now', detail: vi ? 'Té ngã được phát hiện. Trong demo, hãy hủy đếm ngược nếu người đeo an toàn.' : 'A fall was detected. In the demo, cancel the countdown if the wearer is safe.' })
       if (this.confirmedAlertCodes.includes('high-hr')) suggestions.push({ code: 'high-hr', tone: 'warning', icon: 'mdi-heart-pulse', title: vi ? 'Nhịp tim cao liên tiếp' : 'Repeated high heart rate', detail: vi ? 'Đã vượt ngưỡng hồ sơ 3 mẫu liên tiếp; kiểm tra tình huống và vị trí đeo.' : 'The profile threshold was exceeded for 3 samples; check the scenario and band position.' })
       if (this.confirmedAlertCodes.includes('low-hr')) suggestions.push({ code: 'low-hr', tone: 'warning', icon: 'mdi-heart-broken-outline', title: vi ? 'Nhịp tim thấp liên tiếp' : 'Repeated low heart rate', detail: vi ? 'Kiểm tra chất lượng dữ liệu và tình huống mô phỏng.' : 'Check data quality and the active simulation scenario.' })
       if (this.confirmedAlertCodes.includes('low-spo2')) suggestions.push({ code: 'low-spo2', tone: 'warning', icon: 'mdi-water-percent-alert', title: vi ? 'SpO₂ thấp liên tiếp' : 'Repeated low SpO₂', detail: vi ? 'Kiểm tra lại vị trí đeo mô phỏng; không dùng kết quả này để chẩn đoán.' : 'Check the simulated fit; do not use this result for diagnosis.' })
+      if (this.confirmedAlertCodes.includes('high-temp')) suggestions.push({ code: 'high-temp', tone: 'warning', icon: 'mdi-thermometer-alert', title: vi ? 'Nhiệt độ cao liên tiếp' : 'Repeated high temperature', detail: vi ? 'Nhiệt độ mô phỏng vượt 38°C trong 3 mẫu liên tiếp; đây không phải chẩn đoán y tế.' : 'The simulated temperature exceeded 38°C for 3 samples; this is not a medical diagnosis.' })
       if (this.telemetry.battery <= 20) suggestions.push({ code: 'battery', tone: 'warning', icon: 'mdi-battery-alert', title: vi ? 'Tiết kiệm pin' : 'Save battery', detail: vi ? 'Thiết bị chuyển sang chu kỳ 8 giây để mô phỏng tiết kiệm năng lượng.' : 'The device switches to an 8-second cycle to simulate power saving.' })
       if (this.stepProgress < 50 && !this.telemetry.fallDetected) suggestions.push({ code: 'steps', tone: 'info', icon: 'mdi-walk', title: vi ? 'Tiếp tục mục tiêu vận động' : 'Continue the activity goal', detail: vi ? `Đã hoàn thành ${Math.min(100, this.stepProgress)}% mục tiêu ${this.stepGoal.toLocaleString()} bước.` : `${Math.min(100, this.stepProgress)}% of the ${this.stepGoal.toLocaleString()}-step goal is complete.` })
       if (this.dataQualityWarnings.length) suggestions.push({ code: 'quality', tone: 'warning', icon: 'mdi-database-alert-outline', title: vi ? 'Xem lại chất lượng dữ liệu' : 'Review data quality', detail: vi ? 'Có cảnh báo về seq, timestamp, trường bắt buộc hoặc miền giá trị.' : 'There are warnings about sequence, timestamp, required fields or value ranges.' })
@@ -1440,18 +1720,147 @@ export default {
         { metric: this.tr('Battery'), baseline: `${base.battery}%`, current: `${this.telemetry.battery}%`, delta: formatDelta(this.telemetry.battery - base.battery, '%'), tone: this.telemetry.battery <= 20 ? 'bad' : 'neutral' }
       ]
     },
+    personalProfileReady () {
+      const age = Number(this.personalMetrics.age)
+      const height = Number(this.personalMetrics.heightCm)
+      const weight = Number(this.personalMetrics.weightKg)
+      return age >= 5 && age <= 120 && height >= 80 && height <= 230 && weight >= 15 && weight <= 300
+    },
+    personalBmi () {
+      if (!this.personalProfileReady) return null
+      const heightM = Number(this.personalMetrics.heightCm) / 100
+      return Number(this.personalMetrics.weightKg) / (heightM * heightM)
+    },
+    personalBmiLabel () {
+      if (!this.personalBmi) return this.tr('Complete the profile')
+      if (Number(this.personalMetrics.age) < 20) return this.tr('Requires BMI-for-age percentile')
+      if (this.personalBmi < 18.5) return this.tr('Below adult healthy range')
+      if (this.personalBmi < 25) return this.tr('Adult healthy range')
+      if (this.personalBmi < 30) return this.tr('Above adult healthy range')
+      return this.tr('Adult obesity screening range')
+    },
+    personalBmiTone () {
+      if (!this.personalBmi || Number(this.personalMetrics.age) < 20) return 'neutral'
+      if (this.personalBmi >= 18.5 && this.personalBmi < 25) return 'good'
+      return 'review'
+    },
+    recommendedSleepGoal () {
+      const age = Number(this.personalMetrics.age)
+      if (!this.personalProfileReady) return 8
+      if (age <= 5) return 11.5
+      if (age <= 12) return 10.5
+      if (age <= 17) return 9
+      if (age <= 60) return 7
+      if (age <= 64) return 8
+      return 7.5
+    },
+    recommendedSleepText () {
+      const age = Number(this.personalMetrics.age)
+      if (!this.personalProfileReady) return this.tr('Complete the profile')
+      if (age <= 5) return this.tr('10–13 hours')
+      if (age <= 12) return this.tr('9–12 hours')
+      if (age <= 17) return this.tr('8–10 hours')
+      if (age <= 60) return this.tr('At least 7 hours')
+      if (age <= 64) return this.tr('7–9 hours')
+      return this.tr('7–8 hours')
+    },
+    personalAnalysisItems () {
+      const vi = this.language === 'vi'
+      if (!this.personalProfileReady) {
+        return [{
+          code: 'incomplete',
+          tone: 'info',
+          icon: 'mdi-form-textbox',
+          title: this.tr('Complete the basic information'),
+          detail: this.tr('Age, height and weight are required before local analysis can run.')
+        }]
+      }
+      const age = Number(this.personalMetrics.age)
+      const bmi = this.personalBmi
+      const items = []
+      if (age < 20) {
+        items.push({
+          code: 'bmi-child',
+          tone: 'info',
+          icon: 'mdi-human-child',
+          title: this.tr('Child and teen BMI needs a percentile'),
+          detail: vi
+            ? `BMI tính được là ${bmi.toFixed(1)}, nhưng người 5–19 tuổi cần đối chiếu theo tuổi và giới tính; ứng dụng không gắn nhãn cân nặng bằng ngưỡng người lớn.`
+            : `The calculated BMI is ${bmi.toFixed(1)}, but ages 5–19 require age- and sex-specific percentiles; this app does not apply adult labels.`
+        })
+      } else {
+        const category = this.personalBmiLabel
+        items.push({
+          code: 'bmi-adult',
+          tone: this.personalBmiTone === 'good' ? 'good' : 'warning',
+          icon: 'mdi-scale-bathroom',
+          title: category,
+          detail: vi
+            ? `BMI = cân nặng / chiều cao² = ${this.personalMetrics.weightKg} / ${(this.personalMetrics.heightCm / 100).toFixed(2)}² = ${bmi.toFixed(1)}. Đây chỉ là chỉ số sàng lọc.`
+            : `BMI = weight / height² = ${this.personalMetrics.weightKg} / ${(this.personalMetrics.heightCm / 100).toFixed(2)}² = ${bmi.toFixed(1)}. It is a screening measure only.`
+        })
+      }
+      items.push({
+        code: 'sleep-age',
+        tone: 'info',
+        icon: 'mdi-bed-clock',
+        title: this.tr('Age-based sleep target'),
+        detail: vi
+          ? `Ở tuổi ${age}, khoảng tham khảo là ${this.recommendedSleepText}. Bạn vẫn có thể tự điều chỉnh mục tiêu ngủ.`
+          : `At age ${age}, the reference range is ${this.recommendedSleepText}. You can still customize the sleep goal.`
+      })
+      items.push({
+        code: 'activity',
+        tone: 'info',
+        icon: 'mdi-walk',
+        title: this.tr('Activity context'),
+        detail: vi
+          ? `Mức vận động đã chọn: ${this.tr(this.activityLevels.find(item => item.id === this.personalMetrics.activityLevel)?.label || 'Moderate activity')}. Mục tiêu bước chân vẫn do người dùng quyết định.`
+          : `Selected activity level: ${this.tr(this.activityLevels.find(item => item.id === this.personalMetrics.activityLevel)?.label || 'Moderate activity')}. The step target remains user-controlled.`
+      })
+      return items
+    },
     samplingIntervalLabel () {
       return this.tr(this.powerMode === 'eco' ? 'Eco updates every 8 seconds' : 'Live updates every 2 seconds')
+    },
+    isInsideSleepWindow () {
+      const minutes = new Date(this.now).getHours() * 60 + new Date(this.now).getMinutes()
+      const toMinutes = value => {
+        const [hour, minute] = String(value || '00:00').split(':').map(Number)
+        return hour * 60 + minute
+      }
+      const bedtime = toMinutes(this.sleepSettings.bedtime)
+      const wake = toMinutes(this.sleepSettings.wakeTime)
+      return bedtime > wake ? minutes >= bedtime || minutes < wake : minutes >= bedtime && minutes < wake
+    },
+    sleepStageLabel () {
+      return this.tr(({
+        not_tracked: 'Not tracked',
+        awake: 'Awake',
+        candidate: 'Checking sleep',
+        light: 'Light sleep',
+        deep: 'Deep sleep'
+      })[this.telemetry.sleep.stage] || 'Not tracked')
+    },
+    formattedSleepDuration () {
+      const minutes = Math.floor(Number(this.telemetry.sleep.durationMs || 0) / 60000)
+      return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+    },
+    sleepRecommendation () {
+      if (!this.telemetry.wearing) return this.tr('Sleep cannot be inferred while the band is off wrist; this period is marked as missing coverage.')
+      const hours = Number(this.telemetry.sleep.durationMs || 0) / 3600000
+      if (hours > 0 && hours < Number(this.sleepSettings.goalHours)) return this.tr('Current sleep is below the personal goal. Repeated short sleep may reduce attention, recovery and mood; review the trend rather than one sample.')
+      if (['light', 'deep'].includes(this.telemetry.sleep.stage)) return this.tr('Sleep is being inferred from combined motion, heart-rate, SpO₂, temperature and time evidence.')
+      return this.tr('No confirmed sleep session yet. The classroom demo uses accelerated 15–30 second thresholds.')
+    },
+    lastCheckpointText () {
+      if (!this.lastCheckpointAt) return this.tr('Pending')
+      const seconds = Math.max(0, Math.floor((this.now - this.lastCheckpointAt) / 1000))
+      return seconds < 2 ? this.tr('Just now') : `${seconds}s`
     },
     guidedDemoProgress () {
       if (!this.guidedDemo.running) return 0
       return Math.round(((this.guidedDemo.index + 1) / this.guidedDemo.sequence.length) * 100)
-    },
-    selectedLayerData () {
-      return this.architectureLayers[this.selectedLayer]
-    },
-    presenterStep () {
-      return this.presenterSteps[this.presenterIndex]
     },
     livePacket () {
       return JSON.stringify({
@@ -1459,6 +1868,9 @@ export default {
         seq: this.telemetry.seq,
         heartRate: this.telemetry.heartRate,
         spo2: this.telemetry.spo2,
+        bloodPressure: this.telemetry.bloodPressure,
+        wearing: this.telemetry.wearing,
+        sleepStage: this.telemetry.sleep.stage,
         steps: this.telemetry.steps,
         battery: this.telemetry.battery,
         fallDetected: this.telemetry.fallDetected,
@@ -1485,6 +1897,7 @@ export default {
     },
     statusTitle () {
       if (!this.isOnline) return this.tr('Device is offline')
+      if (!this.telemetry.wearing) return this.tr('Device online — not being worn')
       if (this.telemetry.fallDetected) return this.tr('Fall detected')
       if (this.confirmedAlertCodes.includes('high-hr')) return this.tr('Heart rate is above the demo range')
       if (this.confirmedAlertCodes.includes('low-hr')) return this.tr('Heart rate is below the demo range')
@@ -1494,15 +1907,18 @@ export default {
     },
     statusDescription () {
       if (!this.isOnline) return this.tr('No telemetry has been received in the last 8 seconds.')
+      if (!this.telemetry.wearing) return this.tr('The system preserves connection and state while excluding missing health samples from reports.')
       if (this.activeAlerts.length) return this.tr('Review the active alert details below.')
       return this.tr('No simulated health alerts require attention right now.')
     },
     statusTone () {
       if (!this.isOnline || this.telemetry.fallDetected) return 'critical'
+      if (!this.telemetry.wearing) return 'warning'
       return this.activeAlerts.length ? 'warning' : 'healthy'
     },
     statusIcon () {
       if (!this.isOnline) return 'mdi-cloud-off-outline'
+      if (!this.telemetry.wearing) return 'mdi-watch-off-outline'
       if (this.telemetry.fallDetected) return 'mdi-alert-octagon-outline'
       return this.activeAlerts.length ? 'mdi-alert-circle-outline' : 'mdi-check-circle-outline'
     },
@@ -1529,6 +1945,7 @@ export default {
       if (this.confirmedAlertCodes.includes('low-hr')) alerts.push({ code: 'low-hr', severity: 'warning', title: this.tr('Low heart rate'), detail: this.language === 'vi' ? `${t.heartRate} BPM thấp hơn ngưỡng hồ sơ ${this.activeThresholds.lowHr} BPM trong 3 mẫu liên tiếp.` : `${t.heartRate} BPM was below the ${this.activeThresholds.lowHr} BPM profile threshold for 3 consecutive samples.` })
       if (this.confirmedAlertCodes.includes('low-spo2')) alerts.push({ code: 'low-spo2', severity: 'warning', title: this.tr('Low blood oxygen'), detail: this.language === 'vi' ? `${t.spo2}% thấp hơn ngưỡng hồ sơ ${this.activeThresholds.lowSpo2}% trong 3 mẫu liên tiếp.` : `${t.spo2}% was below the ${this.activeThresholds.lowSpo2}% profile threshold for 3 consecutive samples.` })
       if (this.isOnline && t.battery <= 20) alerts.push({ code: 'battery', severity: 'warning', title: this.tr('Low battery'), detail: this.language === 'vi' ? `Pin còn ${t.battery}%.` : `${t.battery}% battery remaining.` })
+      if (this.confirmedAlertCodes.includes('high-temp')) alerts.push({ code: 'high-temp', severity: 'warning', title: this.tr('High body temperature'), detail: this.language === 'vi' ? `${t.bodyTemperatureC.toFixed(1)}°C vượt ngưỡng mô phỏng 38°C trong 3 mẫu liên tiếp.` : `${t.bodyTemperatureC.toFixed(1)}°C exceeded the simulated 38°C threshold for 3 consecutive samples.` })
       return alerts.map(alert => ({ ...alert, acknowledged: Boolean(this.acknowledgedAlerts[alert.code]) }))
     },
     heartRatePoints () {
@@ -1541,30 +1958,34 @@ export default {
   mounted () {
     document.documentElement.lang = this.language
     this.applyTheme()
+    const restored = this.restoreDashboardState()
     this.consumeMessage(this.msg)
     this.socketHandler = message => this.consumeMessage(message)
     this.$socket.on('msg-input:' + this.id, this.socketHandler)
     const requestedView = new URLSearchParams(window.location.search).get('view')
-    if (['overview', 'twin', 'architecture', 'presenter', 'smart', 'guide'].includes(requestedView)) {
+    if (['overview', 'twin', 'smart', 'profile', 'guide', 'activity'].includes(requestedView)) {
       this.activeView = requestedView
     }
     this.clock = setInterval(() => { this.now = Date.now() }, 1000)
+    this.beforeUnloadHandler = () => this.persistDashboardState()
+    window.addEventListener('beforeunload', this.beforeUnloadHandler)
     this.outsideHeaderHandler = () => { this.notificationPanelOpen = false }
     document.addEventListener('click', this.outsideHeaderHandler)
     this.pushNotification(
-      'Dashboard ready',
-      this.tr('Notification center is ready to receive device events and alerts.'),
+      restored ? 'Backup restored' : 'Dashboard ready',
+      restored ? this.tr('The latest valid browser checkpoint was restored.') : this.tr('Notification center is ready to receive device events and alerts.'),
       'info',
       'mdi-view-dashboard-check-outline'
     )
   },
   unmounted () {
     clearInterval(this.clock)
-    if (this.journeyTimer) clearInterval(this.journeyTimer)
     if (this.emergencyTimer) clearInterval(this.emergencyTimer)
     if (this.guidedDemo.timer) clearInterval(this.guidedDemo.timer)
     if (this.socketHandler) this.$socket.off('msg-input:' + this.id, this.socketHandler)
     if (this.outsideHeaderHandler) document.removeEventListener('click', this.outsideHeaderHandler)
+    if (this.beforeUnloadHandler) window.removeEventListener('beforeunload', this.beforeUnloadHandler)
+    this.persistDashboardState()
     document.body.classList.remove('health-band-dark-theme')
   },
   methods: {
@@ -1657,8 +2078,8 @@ export default {
       if (missing.length) warnings.push(`Missing required fields: ${missing.join(', ')}`)
       if (value.deviceId && value.deviceId !== 'health-band-01') warnings.push('Unexpected deviceId')
       const numberRules = [
-        ['heartRate', 40, 200],
-        ['spo2', 70, 100],
+        ['heartRate', 0, 200],
+        ['spo2', 0, 100],
         ['steps', 0, Number.MAX_SAFE_INTEGER],
         ['battery', 0, 100],
         ['seq', 0, Number.MAX_SAFE_INTEGER],
@@ -1670,7 +2091,8 @@ export default {
       })
       if (typeof value.fallDetected !== 'boolean') warnings.push('Invalid fallDetected')
       if (!['good', 'medium', 'poor'].includes(value.signalQuality)) warnings.push('Invalid signalQuality')
-      if (!['normal', 'high_hr', 'low_hr', 'low_spo2', 'fall', 'low_battery'].includes(value.mode)) warnings.push('Invalid mode')
+      if (!['normal', 'high_hr', 'low_hr', 'low_spo2', 'fall', 'low_battery', 'sleep'].includes(value.mode)) warnings.push('Invalid mode')
+      if (value.wearing === false && (Number(value.heartRate) !== 0 || Number(value.spo2) !== 0)) warnings.push('Off-wrist packet contains active vitals')
       const seq = Number(value.seq)
       const timestamp = Number(value.timestamp)
       if (this.lastPacketMeta.seq !== null) {
@@ -1689,11 +2111,13 @@ export default {
       next.highHr = t.heartRate > thresholds.highHr ? Math.min(3, next.highHr + 1) : 0
       next.lowHr = t.heartRate > 0 && t.heartRate < thresholds.lowHr ? Math.min(3, next.lowHr + 1) : 0
       next.lowSpo2 = t.spo2 > 0 && t.spo2 < thresholds.lowSpo2 ? Math.min(3, next.lowSpo2 + 1) : 0
+      next.highTemp = t.wearing && t.bodyTemperatureC >= 38 ? Math.min(3, (next.highTemp || 0) + 1) : 0
       this.alertCounters = next
       const confirmed = []
       if (next.highHr >= 3) confirmed.push('high-hr')
       if (next.lowHr >= 3) confirmed.push('low-hr')
       if (next.lowSpo2 >= 3) confirmed.push('low-spo2')
+      if (next.highTemp >= 3) confirmed.push('high-temp')
       this.confirmedAlertCodes = confirmed
       const activeCodes = new Set(['offline', 'fall', 'battery', ...confirmed])
       this.acknowledgedAlerts = Object.fromEntries(Object.entries(this.acknowledgedAlerts).filter(([code]) => activeCodes.has(code)))
@@ -1706,6 +2130,44 @@ export default {
         steps: this.telemetry.steps,
         battery: this.telemetry.battery
       }
+    },
+    savePersonalMetrics () {
+      const next = {
+        age: Math.round(Number(this.personalMetrics.age)),
+        heightCm: Math.round(Number(this.personalMetrics.heightCm) * 10) / 10,
+        weightKg: Math.round(Number(this.personalMetrics.weightKg) * 10) / 10,
+        activityLevel: this.activityLevels.some(item => item.id === this.personalMetrics.activityLevel)
+          ? this.personalMetrics.activityLevel
+          : 'moderate'
+      }
+      const valid = next.age >= 5 && next.age <= 120 &&
+        next.heightCm >= 80 && next.heightCm <= 230 &&
+        next.weightKg >= 15 && next.weightKg <= 300
+      if (!valid) {
+        this.pushNotification('Profile not saved', this.tr('Check the allowed age, height and weight ranges.'), 'warning', 'mdi-alert-outline')
+        return
+      }
+      this.personalMetrics = next
+      this.profileSavedAt = Date.now()
+      localStorage.setItem('healthBandPersonalMetrics', JSON.stringify(next))
+      localStorage.setItem('healthBandPersonalMetricsSavedAt', String(this.profileSavedAt))
+      this.recordActivity('Application', 'Health profile saved', `Age ${next.age} · ${next.heightCm} cm · ${next.weightKg} kg`, 'application')
+      this.pushNotification('Health profile saved', this.tr('Local BMI and sleep guidance have been updated.'), 'success', 'mdi-account-check-outline')
+      this.persistDashboardState()
+    },
+    resetPersonalMetrics () {
+      this.personalMetrics = { age: null, heightCm: null, weightKg: null, activityLevel: 'moderate' }
+      this.profileSavedAt = 0
+      localStorage.removeItem('healthBandPersonalMetrics')
+      localStorage.removeItem('healthBandPersonalMetricsSavedAt')
+      this.recordActivity('Application', 'Health profile reset', 'Age, height, weight and activity level cleared', 'application')
+      this.persistDashboardState()
+    },
+    applyRecommendedSleepGoal () {
+      if (!this.personalProfileReady) return
+      this.sleepSettings.goalHours = this.recommendedSleepGoal
+      this.saveSleepSettings()
+      this.pushNotification('Sleep goal updated', `${this.recommendedSleepGoal}h`, 'success', 'mdi-bed-clock')
     },
     saveStepGoal () {
       const goal = Math.round(Number(this.stepGoalInput))
@@ -1727,11 +2189,37 @@ export default {
         this.stepGoalInput = selected.suggestedGoal
         localStorage.setItem('healthBandStepGoal', String(selected.suggestedGoal))
       }
-      this.alertCounters = { highHr: 0, lowHr: 0, lowSpo2: 0 }
+      this.alertCounters = { highHr: 0, lowHr: 0, lowSpo2: 0, highTemp: 0 }
       this.confirmedAlertCodes = []
       const requestId = `dashboard-${Date.now()}`
       this.send({ dashboardCommand: true, payload: { requestId, command: 'setProfile', value: profile } })
       this.recordActivity('Smart coach', 'Profile updated', `${selected.name} · ${requestId}`, 'application')
+    },
+    setGender (gender) {
+      if (!['male', 'female'].includes(gender)) return
+      this.gender = gender
+      localStorage.setItem('healthBandGender', gender)
+      const requestId = `dashboard-${Date.now()}`
+      this.send({ dashboardCommand: true, payload: { requestId, command: 'setGender', value: gender } })
+      this.recordActivity('Smart coach', 'Gender updated', `${gender} · ${requestId}`, 'application')
+      this.persistDashboardState()
+    },
+    setWearMode (mode) {
+      if (!['auto', 'worn', 'off_wrist'].includes(mode)) return
+      this.wearMode = mode
+      localStorage.setItem('healthBandWearMode', mode)
+      const requestId = `dashboard-${Date.now()}`
+      this.send({ dashboardCommand: true, payload: { requestId, command: 'setWearState', value: mode } })
+      this.recordActivity('Application', 'Wear state updated', `${mode} · ${requestId}`, 'application')
+      this.persistDashboardState()
+    },
+    saveSleepSettings () {
+      this.sleepSettings.goalHours = Math.max(4, Math.min(12, Number(this.sleepSettings.goalHours) || 8))
+      localStorage.setItem('healthBandBedtime', this.sleepSettings.bedtime)
+      localStorage.setItem('healthBandWakeTime', this.sleepSettings.wakeTime)
+      localStorage.setItem('healthBandSleepGoal', String(this.sleepSettings.goalHours))
+      this.recordActivity('Smart coach', 'Sleep plan saved', `${this.sleepSettings.bedtime}–${this.sleepSettings.wakeTime} · ${this.sleepSettings.goalHours}h`, 'application')
+      this.persistDashboardState()
     },
     setPowerMode (mode) {
       if (!['normal', 'eco'].includes(mode)) return
@@ -1814,6 +2302,231 @@ export default {
       URL.revokeObjectURL(url)
       this.recordActivity('Smart coach', 'Report downloaded', `${report.activeAlerts.length} alerts · score ${report.healthScore}`, 'application')
     },
+    createAccumulator (kind, now = Date.now()) {
+      return {
+        kind,
+        startedAt: now,
+        totalSamples: 0,
+        wornSamples: 0,
+        totalDurationMs: 0,
+        wornDurationMs: 0,
+        validSamples: 0,
+        heartRateSum: 0,
+        spo2Sum: 0,
+        systolicSum: 0,
+        diastolicSum: 0,
+        stepsStart: Number(this.telemetry.steps || 0),
+        stepsLast: Number(this.telemetry.steps || 0),
+        sleepDurationMs: 0,
+        alertCount: 0
+      }
+    },
+    periodChanged (kind, accumulator, now) {
+      const start = new Date(accumulator.startedAt)
+      const current = new Date(now)
+      if (kind === 'hourly') return Number(accumulator.wornDurationMs || 0) >= 3600000
+      if (kind === 'daily') return start.toDateString() !== current.toDateString()
+      return start.getFullYear() !== current.getFullYear() || start.getMonth() !== current.getMonth()
+    },
+    addTelemetryToReports () {
+      const now = Date.now()
+      const next = { ...this.reportAccumulators }
+      ;['hourly', 'daily', 'monthly'].forEach(kind => {
+        let accumulator = next[kind] || this.createAccumulator(kind, now)
+        if (this.periodChanged(kind, accumulator, now)) {
+          this.storeCompletedReport(kind, this.buildReport(accumulator, now))
+          accumulator = this.createAccumulator(kind, now)
+        }
+        accumulator.totalSamples++
+        const sampleDuration = Number(this.telemetry.samplingIntervalMs || 2000)
+        accumulator.totalDurationMs = Number(accumulator.totalDurationMs || 0) + sampleDuration
+        accumulator.stepsLast = Number(this.telemetry.steps || accumulator.stepsLast)
+        accumulator.sleepDurationMs = Math.max(accumulator.sleepDurationMs, Number(this.telemetry.sleep.durationMs || 0))
+        accumulator.alertCount = Math.max(accumulator.alertCount, this.activeAlerts.length)
+        if (this.telemetry.wearing) {
+          accumulator.wornSamples++
+          accumulator.wornDurationMs = Number(accumulator.wornDurationMs || 0) + sampleDuration
+        }
+        if (this.telemetry.wearing && this.telemetry.vitalDataValid) {
+          accumulator.validSamples++
+          accumulator.heartRateSum += Number(this.telemetry.heartRate || 0)
+          accumulator.spo2Sum += Number(this.telemetry.spo2 || 0)
+          accumulator.systolicSum += Number(this.telemetry.bloodPressure.systolic || 0)
+          accumulator.diastolicSum += Number(this.telemetry.bloodPressure.diastolic || 0)
+        }
+        next[kind] = accumulator
+      })
+      this.reportAccumulators = next
+    },
+    buildReport (accumulator, endAt = Date.now()) {
+      if (!accumulator) return null
+      const valid = Math.max(1, accumulator.validSamples)
+      return {
+        id: `${accumulator.kind}-${endAt}`,
+        kind: accumulator.kind,
+        generatedAt: new Date(endAt).toISOString(),
+        periodStart: new Date(accumulator.startedAt).toISOString(),
+        periodEnd: new Date(endAt).toISOString(),
+        profile: this.profile,
+        gender: this.gender,
+        wearCoveragePercent: accumulator.totalDurationMs ? Math.round(accumulator.wornDurationMs / accumulator.totalDurationMs * 100) : 0,
+        wornDurationMinutes: Math.round(accumulator.wornDurationMs / 60000),
+        validSampleCount: accumulator.validSamples,
+        averageHeartRate: accumulator.validSamples ? Math.round(accumulator.heartRateSum / valid) : null,
+        averageSpO2: accumulator.validSamples ? Math.round(accumulator.spo2Sum / valid * 10) / 10 : null,
+        averageBloodPressure: accumulator.validSamples
+          ? { systolic: Math.round(accumulator.systolicSum / valid), diastolic: Math.round(accumulator.diastolicSum / valid), source: 'simulated_estimate' }
+          : null,
+        steps: Math.max(0, accumulator.stepsLast - accumulator.stepsStart),
+        sleepHours: Math.round(accumulator.sleepDurationMs / 360000) / 10,
+        maximumConcurrentAlerts: accumulator.alertCount,
+        disclaimer: 'Educational simulation only; not for medical diagnosis.'
+      }
+    },
+    storeCompletedReport (kind, report) {
+      if (!report || !this.reports[kind]) return
+      this.reports = { ...this.reports, [kind]: [report, ...this.reports[kind]].slice(0, 31) }
+      this.pushNotification(`${kind.charAt(0).toUpperCase() + kind.slice(1)} report ready`, `${report.wearCoveragePercent}% wear coverage`, 'success', 'mdi-file-chart-outline')
+    },
+    generateReportNow () {
+      ;['hourly', 'daily', 'monthly'].forEach(kind => {
+        const report = this.buildReport(this.reportAccumulators[kind])
+        if (report) this.storeCompletedReport(kind, { ...report, manual: true })
+      })
+      this.persistDashboardState()
+      this.recordActivity('Smart coach', 'Reports generated', 'Hourly, daily and monthly snapshots created from valid worn samples', 'application')
+    },
+    latestReport (kind) {
+      return (this.reports[kind] || [])[0] || null
+    },
+    reportStatus (kind) {
+      const report = this.latestReport(kind)
+      if (!report) return this.tr('Waiting for enough data')
+      return `${new Date(report.generatedAt).toLocaleString()} · ${report.wearCoveragePercent}%`
+    },
+    downloadLatestReport (kind) {
+      const report = this.latestReport(kind)
+      if (!report) return
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `health-band-${kind}-${Date.now()}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+    },
+    dashboardSnapshot () {
+      return {
+        version: 2,
+        createdAt: new Date().toISOString(),
+        profile: this.profile,
+        gender: this.gender,
+        personalMetrics: this.personalMetrics,
+        profileSavedAt: this.profileSavedAt,
+        wearMode: this.wearMode,
+        stepGoal: this.stepGoal,
+        stepGoalCustomized: this.stepGoalCustomized,
+        sleepSettings: this.sleepSettings,
+        reports: this.reports,
+        reportAccumulators: this.reportAccumulators,
+        activity: this.activity.slice(0, 30),
+        notifications: this.notifications.slice(0, 20),
+        telemetry: this.telemetry
+      }
+    },
+    persistDashboardState () {
+      try {
+        const key = 'healthBandDashboardBackupV2'
+        const current = localStorage.getItem(key)
+        if (current) localStorage.setItem(`${key}Previous`, current)
+        localStorage.setItem(key, JSON.stringify(this.dashboardSnapshot()))
+        this.lastCheckpointAt = Date.now()
+      } catch (error) {
+        this.gemini.message = this.tr('Browser storage is unavailable; use Export backup before the demo.')
+      }
+    },
+    restoreDashboardState () {
+      const keys = ['healthBandDashboardBackupV2', 'healthBandDashboardBackupV2Previous']
+      for (const key of keys) {
+        try {
+          const saved = JSON.parse(localStorage.getItem(key) || 'null')
+          if (!saved || saved.version !== 2) continue
+          this.profile = saved.profile || this.profile
+          this.gender = saved.gender || this.gender
+          this.personalMetrics = { ...this.personalMetrics, ...(saved.personalMetrics || {}) }
+          this.profileSavedAt = Number(saved.profileSavedAt || this.profileSavedAt)
+          this.wearMode = saved.wearMode || this.wearMode
+          this.stepGoal = Number(saved.stepGoal || this.stepGoal)
+          this.stepGoalInput = this.stepGoal
+          this.stepGoalCustomized = saved.stepGoalCustomized === true
+          this.sleepSettings = { ...this.sleepSettings, ...(saved.sleepSettings || {}) }
+          this.reports = { ...this.reports, ...(saved.reports || {}) }
+          this.reportAccumulators = { ...this.reportAccumulators, ...(saved.reportAccumulators || {}) }
+          this.activity = Array.isArray(saved.activity) ? saved.activity : this.activity
+          this.notifications = Array.isArray(saved.notifications) ? saved.notifications : this.notifications
+          this.activityId = this.activity.reduce((maximum, item) => Math.max(maximum, Number(item.id || 0)), 0)
+          this.notificationId = this.notifications.reduce((maximum, item) => Math.max(maximum, Number(item.id || 0)), 0)
+          this.lastCheckpointAt = Date.parse(saved.createdAt) || Date.now()
+          return true
+        } catch (error) {}
+      }
+      return false
+    },
+    exportBackup () {
+      const snapshot = this.dashboardSnapshot()
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `health-band-backup-${Date.now()}.json`
+      link.click()
+      URL.revokeObjectURL(url)
+      this.persistDashboardState()
+    },
+    async importBackup (event) {
+      const file = event.target.files && event.target.files[0]
+      if (!file) return
+      try {
+        const snapshot = JSON.parse(await file.text())
+        if (snapshot.version !== 2) throw new Error('Unsupported backup version')
+        localStorage.setItem('healthBandDashboardBackupV2', JSON.stringify(snapshot))
+        this.restoreDashboardState()
+        this.pushNotification('Backup restored', this.tr('Dashboard preferences and report history were restored.'), 'success', 'mdi-backup-restore')
+      } catch (error) {
+        this.pushNotification('Restore failed', error.message, 'critical', 'mdi-alert-outline')
+      } finally {
+        event.target.value = ''
+      }
+    },
+    async requestGeminiAdvice () {
+      this.gemini = { ...this.gemini, loading: true, message: '' }
+      const report = this.buildReport(this.reportAccumulators.hourly) || {}
+      try {
+        const response = await fetch('/health-band/api/ai-recommendation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            profile: this.profile,
+            gender: this.gender,
+            language: this.language,
+            wearCoveragePercent: report.wearCoveragePercent || 0,
+            averageHeartRate: report.averageHeartRate,
+            averageSpO2: report.averageSpO2,
+            averageBloodPressure: report.averageBloodPressure,
+            steps: report.steps || 0,
+            sleepHours: report.sleepHours || 0,
+            sleepGoalHours: this.sleepSettings.goalHours,
+            alerts: this.activeAlerts.map(item => item.code)
+          })
+        })
+        const result = await response.json()
+        if (!response.ok || !result.ok) throw new Error(result.message || 'Gemini endpoint is unavailable')
+        this.gemini = { loading: false, message: result.recommendation, source: 'gemini' }
+      } catch (error) {
+        const fallback = this.smartSuggestions.slice(0, 3).map(item => `${item.title}: ${item.detail}`).join(' ')
+        this.gemini = { loading: false, message: `${fallback} (${this.tr('Local fallback because Gemini is not configured.')})`, source: 'local' }
+      }
+    },
     clearSessionData () {
       this.stopGuidedDemo(false)
       if (this.emergencyTimer) clearInterval(this.emergencyTimer)
@@ -1821,7 +2534,7 @@ export default {
       this.activity = []
       this.activityId = 0
       this.normalBaseline = null
-      this.alertCounters = { highHr: 0, lowHr: 0, lowSpo2: 0 }
+      this.alertCounters = { highHr: 0, lowHr: 0, lowSpo2: 0, highTemp: 0 }
       this.confirmedAlertCodes = []
       this.acknowledgedAlerts = {}
       this.dataQualityWarnings = []
@@ -1833,32 +2546,59 @@ export default {
       this.stepGoalInput = 6000
       this.stepGoalCustomized = false
       this.profile = 'student'
+      this.gender = 'male'
+      this.personalMetrics = { age: null, heightCm: null, weightKg: null, activityLevel: 'moderate' }
+      this.profileSavedAt = 0
+      this.wearMode = 'auto'
+      this.sleepSettings = { bedtime: '22:30', wakeTime: '06:30', goalHours: 8 }
+      this.reports = { hourly: [], daily: [], monthly: [] }
+      this.reportAccumulators = { hourly: null, daily: null, monthly: null }
       localStorage.removeItem('healthBandStepGoal')
       localStorage.removeItem('healthBandStepGoalCustomized')
       localStorage.removeItem('healthBandProfile')
+      localStorage.removeItem('healthBandGender')
+      localStorage.removeItem('healthBandPersonalMetrics')
+      localStorage.removeItem('healthBandPersonalMetricsSavedAt')
+      localStorage.removeItem('healthBandWearMode')
+      localStorage.removeItem('healthBandBedtime')
+      localStorage.removeItem('healthBandWakeTime')
+      localStorage.removeItem('healthBandSleepGoal')
+      localStorage.removeItem('healthBandDashboardBackupV2')
+      localStorage.removeItem('healthBandDashboardBackupV2Previous')
       this.recordActivity('Smart coach', 'Session cleared', 'Local history, alerts, goal, profile and quality warnings cleared', 'application')
     },
     startGuidedDemo () {
       this.stopGuidedDemo(false)
       this.guidedDemo.running = true
       this.guidedDemo.index = 0
-      this.recordActivity('Smart coach', 'Automatic demo started', 'Six MQTT-controlled scenarios', 'presenter')
-      this.sendMode(this.guidedDemo.sequence[0].mode)
+      this.recordActivity('Smart coach', 'Automatic demo started', 'The automatic flow and MQTT scenarios are now synchronized', 'application')
+      this.executeGuidedDemoStep()
       this.guidedDemo.timer = setInterval(() => {
         if (this.guidedDemo.index >= this.guidedDemo.sequence.length - 1) {
           this.stopGuidedDemo(false)
           return
         }
         this.guidedDemo.index++
-        this.sendMode(this.guidedDemo.sequence[this.guidedDemo.index].mode)
+        this.executeGuidedDemoStep()
       }, 6500)
+    },
+    executeGuidedDemoStep () {
+      const item = this.guidedDemo.sequence[this.guidedDemo.index]
+      if (!item) return
+      this.recordActivity('Automation', `Automatic step ${this.guidedDemo.index + 1}`, item.label, 'application')
+      if (item.action === 'view-twin') {
+        this.activeView = 'twin'
+      } else if (item.mode) {
+        this.activeView = 'twin'
+        this.sendMode(item.mode)
+      }
     },
     stopGuidedDemo (record = true) {
       if (this.guidedDemo.timer) clearInterval(this.guidedDemo.timer)
       this.guidedDemo.timer = null
       const wasRunning = this.guidedDemo.running
       this.guidedDemo.running = false
-      if (record && wasRunning) this.recordActivity('Smart coach', 'Automatic demo stopped', 'Presenter stopped the scenario sequence', 'presenter')
+      if (record && wasRunning) this.recordActivity('Smart coach', 'Automatic demo stopped', 'The automatic scenario sequence was stopped', 'application')
     },
     consumeMessage (message) {
       let value = message && message.payload
@@ -1926,6 +2666,12 @@ export default {
         deviceId: value.deviceId || 'health-band-01',
         heartRate: Number(value.heartRate),
         spo2: Number(value.spo2),
+        bloodPressure: {
+          systolic: Number((value.bloodPressure || {}).systolic || 0),
+          diastolic: Number((value.bloodPressure || {}).diastolic || 0),
+          source: (value.bloodPressure || {}).source || 'simulated_estimate',
+          medicalGrade: false
+        },
         steps: Number(value.steps),
         battery: Number(value.battery),
         fallDetected: value.fallDetected === true,
@@ -1934,11 +2680,59 @@ export default {
         mode: value.mode || this.activeMode,
         timestamp: Number(value.timestamp || 0),
         profile: value.profile || this.profile,
+        gender: value.gender || this.gender,
+        wearing: value.wearing !== false,
+        wearMode: value.wearMode || this.wearMode,
+        vitalDataValid: value.vitalDataValid === true,
         powerMode: value.powerMode || (Number(value.battery) <= 20 ? 'eco' : this.powerMode),
         samplingIntervalMs: Number(value.samplingIntervalMs || (value.powerMode === 'eco' ? 8000 : 2000))
+        ,
+        dataSource: value.dataSource || 'unknown',
+        sensorHealth: value.sensorHealth || 'unknown',
+        heartRateRaw: Number(value.heartRateRaw || 0),
+        spo2Raw: Number(value.spo2Raw || 0),
+        motion: {
+          accelX: Number((value.motion || {}).accelX || 0),
+          accelY: Number((value.motion || {}).accelY || 0),
+          accelZ: Number((value.motion || {}).accelZ || 0),
+          magnitude: Number((value.motion || {}).magnitude || 0),
+          detected: (value.motion || {}).detected === true
+        },
+        bodyTemperatureC: Number(value.bodyTemperatureC || 0),
+        ambientLightLux: Number(value.ambientLightLux || 0),
+        displayMode: value.displayMode || 'bright',
+        environment: {
+          temperatureC: Number((value.environment || {}).temperatureC || 0),
+          pressurePa: Number((value.environment || {}).pressurePa || 101325),
+          altitudeM: Number((value.environment || {}).altitudeM || 0)
+        },
+        location: {
+          latitude: Number((value.location || {}).latitude || 0),
+          longitude: Number((value.location || {}).longitude || 0),
+          valid: (value.location || {}).valid === true,
+          source: (value.location || {}).source || 'serial_nmea',
+          updatedAt: Number((value.location || {}).updatedAt || 0)
+        },
+        hapticActive: value.hapticActive === true,
+        sleep: {
+          stage: (value.sleep || {}).stage || 'not_tracked',
+          confidence: Number((value.sleep || {}).confidence || 0),
+          candidateSinceMs: Number((value.sleep || {}).candidateSinceMs || 0),
+          detectedStartMs: Number((value.sleep || {}).detectedStartMs || 0),
+          durationMs: Number((value.sleep || {}).durationMs || 0),
+          model: (value.sleep || {}).model || 'sensor_fusion_demo',
+          timeWindowMatched: (value.sleep || {}).timeWindowMatched === true
+        },
+        recovery: {
+          stateRestored: (value.recovery || {}).stateRestored === true,
+          checkpointSequence: Number((value.recovery || {}).checkpointSequence || 0),
+          checkpointIntervalMs: Number((value.recovery || {}).checkpointIntervalMs || 30000)
+        }
       }
       if (value.mode) this.activeMode = value.mode
       if (value.profile && this.profiles.some(item => item.id === value.profile)) this.profile = value.profile
+      if (['male', 'female'].includes(value.gender)) this.gender = value.gender
+      if (['auto', 'worn', 'off_wrist'].includes(value.wearMode)) this.wearMode = value.wearMode
       this.powerMode = this.telemetry.powerMode
       this.lastSeen = Date.now()
       this.now = this.lastSeen
@@ -1951,17 +2745,21 @@ export default {
           'network'
         )
       }
-      this.history.push({
-        heartRate: this.telemetry.heartRate,
-        spo2: this.telemetry.spo2,
-        steps: this.telemetry.steps,
-        battery: this.telemetry.battery,
-        timestamp: this.telemetry.timestamp,
-        seq: this.telemetry.seq
-      })
-      if (this.history.length > 40) this.history.shift()
+      if (this.telemetry.vitalDataValid) {
+        this.history.push({
+          heartRate: this.telemetry.heartRate,
+          spo2: this.telemetry.spo2,
+          steps: this.telemetry.steps,
+          battery: this.telemetry.battery,
+          timestamp: this.telemetry.timestamp,
+          seq: this.telemetry.seq
+        })
+        if (this.history.length > 40) this.history.shift()
+      }
       this.updateAlertCounters()
       this.updateNormalBaseline()
+      this.addTelemetryToReports()
+      this.persistDashboardState()
       if (this.telemetry.fallDetected) {
         this.startEmergencyCountdown()
       } else {
@@ -2018,40 +2816,6 @@ export default {
       this.recordActivity('Application', 'Command sent', `resetSteps · ${requestId}`, 'application')
       this.send({ dashboardCommand: true, payload: { requestId, command: 'resetSteps' } })
       setTimeout(() => { this.commandState = 'Ready' }, 1800)
-    },
-    playDataJourney () {
-      if (this.journeyTimer) clearInterval(this.journeyTimer)
-      this.journeyRunning = true
-      this.journeyStep = 0
-      this.selectedLayer = 0
-      this.recordActivity('Application', 'Data journey started', 'Following telemetry through all four IoT layers', 'application')
-      this.journeyTimer = setInterval(() => {
-        if (this.journeyStep >= 3) {
-          clearInterval(this.journeyTimer)
-          this.journeyRunning = false
-          return
-        }
-        this.journeyStep++
-        this.selectedLayer = this.journeyStep
-      }, 1300)
-    },
-    previousPresenterStep () {
-      if (this.presenterIndex > 0) this.presenterIndex--
-    },
-    nextPresenterStep () {
-      if (this.presenterIndex < this.presenterSteps.length - 1) this.presenterIndex++
-    },
-    runPresenterStep () {
-      const step = this.presenterStep
-      this.recordActivity('Presenter', `Step ${this.presenterIndex + 1}: ${step.title}`, step.description, 'presenter')
-      if (step.mode) {
-        this.sendMode(step.mode)
-      } else if (step.action === 'journey') {
-        this.activeView = 'architecture'
-        this.playDataJourney()
-      } else if (step.action === 'view-twin') {
-        this.activeView = 'twin'
-      }
     }
   }
 }
@@ -2147,13 +2911,14 @@ export default {
 .section-title { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 13px; }
 .section-title h2 { margin: 0; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
 .section-title p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
-.metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px,1fr)); gap: 12px; }
 .metric-card, .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: 0 2px 8px rgba(24,32,43,.035); }
 .metric-card { padding: 17px; }
 .metric-head { display: flex; align-items: center; gap: 9px; color: #4d5a6c; font-size: 12px; font-weight: 600; }
 .metric-icon { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 8px; }
 .metric-icon.heart { color: var(--heart); background: #fceef1; }
 .metric-icon.oxygen { color: var(--oxygen); background: #eaf7f8; }
+.metric-icon.pressure { color: #9b4d77; background: #faedf4; }
 .metric-icon.steps { color: #5f68a9; background: #f0f1fa; }
 .metric-icon.battery { color: var(--green); background: #edf7f1; }
 .metric-reading { display: flex; align-items: baseline; gap: 7px; margin: 16px 0 13px; }
@@ -2164,8 +2929,57 @@ export default {
 .metric-foot .good { color: var(--green); }
 .metric-foot .bad { color: var(--red); }
 .metric-foot .neutral { color: #637083; }
+.sensor-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 10px; }
+.sensor-card { display: grid; gap: 7px; min-height: 122px; padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 2px 8px rgba(24,32,43,.035); }
+.sensor-card > .v-icon { color: #416da9; }
+.sensor-card > span { color: var(--muted); font-size: 9px; font-weight: 700; }
+.sensor-card > strong { color: var(--ink); font-size: 20px; line-height: 1.15; }
+.sensor-card > strong small { color: var(--muted); font-size: 9px; }
+.sensor-card > em { align-self: end; color: #47705d; font-size: 8px; font-style: normal; font-weight: 650; }
+.sensor-card .sensor-coordinate { font-size: 14px; }
 .battery-bar { height: 4px; margin: -3px 0 10px; overflow: hidden; border-radius: 4px; background: #ebeff3; }
 .battery-bar i { display: block; height: 100%; border-radius: inherit; background: var(--green); transition: width .25s ease; }
+.global-clock { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.blood-pressure-reading strong { font-size: 28px; }
+.advanced-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.activity-log-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
+.activity-log-timeline { margin-top: 14px; }
+.activity-log-timeline .activity-list { max-height: 560px; overflow: auto; padding-right: 4px; }
+.compact-panel { min-width: 0; padding: 16px; }
+.compact-panel .panel-title { align-items: center; }
+.compact-panel p { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.inline-controls { display: grid; grid-template-columns: repeat(auto-fit,minmax(110px,1fr)); gap: 9px; margin: 10px 0; }
+.inline-controls label { display: grid; gap: 5px; color: var(--muted); font-size: 9px; font-weight: 700; }
+.inline-controls select, .inline-controls input { width: 100%; min-height: 35px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--surface); font: inherit; }
+.wear-controls, .gender-options { display: flex; flex-wrap: wrap; gap: 7px; margin: 10px 0; }
+.wear-controls button, .gender-options button { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 8px; color: #53637a; background: var(--surface); font-size: 9px; font-weight: 750; cursor: pointer; }
+.wear-controls button.selected, .gender-options button.selected { color: #1f5fb9; border-color: #9bb9e8; background: #edf4ff; }
+.gender-options > span { align-self: center; margin-right: 4px; color: var(--muted); font-size: 9px; font-weight: 750; }
+.wear-result, .sleep-summary, .gemini-result { display: flex; align-items: center; gap: 11px; padding: 12px; border: 1px solid #dce8e1; border-radius: 10px; background: #f4faf7; }
+.wear-result.off { border-color: #eadfc8; background: #fff9ed; }
+.wear-result > .v-icon, .sleep-icon { color: var(--green); }
+.wear-result.off > .v-icon { color: var(--amber); }
+.wear-result strong, .wear-result p, .sleep-summary strong, .sleep-summary p { display: block; margin: 0; }
+.sleep-summary { display: grid; grid-template-columns: auto 1fr auto; border-color: #dcdcf0; background: #f7f6fd; }
+.sleep-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; color: #6263a9; background: #e9e9f8; }
+.sleep-summary > b { color: #4c5274; font-size: 16px; font-variant-numeric: tabular-nums; }
+.report-list { display: grid; margin-top: 7px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.report-list > div { display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 8px; padding: 9px 10px; border-top: 1px solid var(--line); }
+.report-list > div:first-child { border-top: 0; }
+.report-list span { color: var(--muted); font-size: 9px; font-weight: 750; text-transform: uppercase; }
+.report-list strong { overflow: hidden; font-size: 9px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.report-list button, .small-action { display: inline-grid; place-items: center; min-height: 28px; padding: 5px 8px; border: 1px solid #bad0ef; border-radius: 7px; color: #245b9f; background: #edf4ff; font-size: 8px; font-weight: 750; cursor: pointer; }
+.report-list button:disabled, .small-action:disabled { opacity: .45; cursor: default; }
+.recovery-list { display: grid; gap: 8px; margin: 8px 0 12px; padding: 0; list-style: none; }
+.recovery-list li { display: grid; grid-template-columns: 84px 1fr; gap: 8px; padding: 8px 9px; border-radius: 8px; background: #f7f9fc; font-size: 9px; }
+.recovery-list span { color: var(--muted); }
+.backup-actions { display: flex; gap: 8px; }
+.backup-actions button, .backup-actions label { display: inline-flex; align-items: center; gap: 5px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; color: #435873; background: var(--surface); font-size: 9px; font-weight: 750; cursor: pointer; }
+.backup-actions input { display: none; }
+.gemini-panel { grid-column: 1/-1; }
+.gemini-result { align-items: flex-start; min-height: 72px; border-color: #d9e1f2; background: #f5f8ff; }
+.gemini-result > .v-icon { color: #4c6eaa; }
+.gemini-result p { margin: 0; color: #3e4e66; font-size: 11px; white-space: pre-line; }
 .content-grid { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(270px,.65fr); gap: 14px; margin-top: 14px; }
 .panel { padding: 18px; }
 .panel-title { align-items: center; margin-bottom: 14px; }
@@ -2219,7 +3033,7 @@ export default {
 .view-tabs button.active { color: #235ebf; background: #eaf2ff; }
 .interactive-view { min-height: 850px; }
 .view-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 16px; padding: 4px 1px; }
-.view-heading > div > span, .layer-kicker, .presenter-label { color: #5075ad; font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+.view-heading > div > span, .layer-kicker { color: #5075ad; font-size: 9px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
 .view-heading h2 { margin: 3px 0; font-size: 22px; }
 .view-heading p { margin: 0; color: var(--muted); font-size: 11px; }
 .emergency-banner { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; margin: -6px 0 18px; padding: 14px 16px; border: 1px solid #f2c9cc; border-radius: 13px; color: #8f2230; background: linear-gradient(110deg,#fff5f6,#fffafb); box-shadow: 0 7px 24px rgba(154,36,52,.08); }
@@ -2351,7 +3165,6 @@ export default {
 .automation-layout .stop-demo { background: #a93143; }
 .ack-button { margin-left: auto; padding: 5px 7px; border: 1px solid currentColor; border-radius: 6px; color: inherit; background: transparent; font-size: 7px; font-weight: 750; cursor: pointer; white-space: nowrap; }
 .ack-badge { margin-left: auto; padding: 4px 6px; border-radius: 999px; color: #56705f; background: #e8f2eb; font-size: 7px; font-weight: 750; white-space: nowrap; }
-.overview-activity, .presenter-activity { margin-top: 14px; }
 .event-total, .step-counter { padding: 6px 9px; border-radius: 7px; color: #3e6299; background: #edf3fb; font-size: 9px; font-weight: 700; }
 .activity-list { display: grid; }
 .activity-row { display: grid; grid-template-columns: 68px 76px minmax(0,1fr); align-items: start; gap: 10px; padding: 9px 0; border-top: 1px solid #edf0f4; }
@@ -2360,7 +3173,6 @@ export default {
 .activity-source.device { color: #2a6c4e; background: #eaf5ef; }
 .activity-source.network { color: #176b7b; background: #e9f5f7; }
 .activity-source.application { color: #315fa8; background: #edf3fd; }
-.activity-source.presenter { color: #6b4ba3; background: #f1ecf9; }
 .activity-source.rejected { color: #a53b40; background: #fae9ea; }
 .activity-row strong { display: block; font-size: 10px; }
 .activity-row p { margin: 2px 0 0; color: var(--muted); font-size: 8px; }
@@ -2444,27 +3256,44 @@ export default {
 .topic-chip span, .topic-chip strong { display: block; }
 .topic-chip span { color: var(--muted); font-size: 8px; }
 .topic-chip strong { margin-top: 2px; font-size: 9px; }
-.presenter-layout { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(300px,.7fr); gap: 14px; }
-.presenter-card { position: relative; overflow: hidden; padding: 28px; }
-.presenter-progress { position: absolute; left: 0; right: 0; top: 0; height: 4px; background: #e8edf3; }
-.presenter-progress i { display: block; height: 100%; background: var(--blue); transition: width .3s ease; }
-.presenter-card h2 { margin: 6px 0 8px; font-size: 25px; }
-.presenter-card > p { max-width: 700px; margin: 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
-.audience-prompt { display: flex; gap: 11px; margin-top: 20px; padding: 14px; border-left: 3px solid #597fc0; border-radius: 0 9px 9px 0; color: #355b92; background: #f2f6fc; }
-.audience-prompt span, .audience-prompt strong { display: block; }
-.audience-prompt span { font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
-.audience-prompt strong { margin-top: 4px; font-size: 11px; }
-.expected-result { margin-top: 12px; padding: 13px 14px; border-radius: 9px; background: #f6f8fa; }
-.expected-result span { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
-.expected-result p { margin: 4px 0 0; font-size: 10px; line-height: 1.5; }
-.presenter-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 20px; }
-.presenter-actions button { display: flex; align-items: center; justify-content: center; gap: 5px; min-width: 110px; padding: 9px 12px; border: 1px solid #d5dde7; border-radius: 8px; color: #526174; background: #fff; font-size: 9px; font-weight: 650; cursor: pointer; }
-.presenter-actions button:disabled { opacity: .4; cursor: default; }
-.presenter-actions .run-step { flex: 1; color: #fff; border-color: #2f6fed; background: #2f6fed; }
-.proof-reading { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-top: 1px solid #edf0f4; }
-.proof-reading span { color: var(--muted); font-size: 9px; }
-.proof-reading strong { font-size: 10px; text-align: right; }
-.presenter-activity { margin-top: 14px; }
+.profile-save-state { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #dce5f0; border-radius: 8px; color: #49647f; background: #f6f9fc; font-size: 9px; font-weight: 700; }
+.health-profile-grid { display: grid; grid-template-columns: minmax(360px,.85fr) minmax(460px,1.15fr); gap: 14px; }
+.personal-form, .personal-analysis { min-height: 430px; }
+.personal-form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; }
+.personal-form-grid label { display: grid; gap: 6px; color: #657286; font-size: 9px; font-weight: 700; }
+.personal-form-grid input, .personal-form-grid select { width: 100%; height: 39px; padding: 0 11px; border: 1px solid #d7e0ea; border-radius: 8px; color: var(--text); background: #fff; font: inherit; outline: none; }
+.personal-form-grid input:focus, .personal-form-grid select:focus { border-color: #6e9bea; box-shadow: 0 0 0 3px rgba(47,111,237,.1); }
+.input-with-unit { position: relative; }
+.input-with-unit input { padding-right: 48px; }
+.input-with-unit small { position: absolute; right: 11px; top: 50%; color: #8a96a7; font-size: 9px; transform: translateY(-50%); }
+.personal-gender { display: flex; align-items: center; gap: 8px; margin-top: 15px; padding-top: 14px; border-top: 1px solid #edf1f5; }
+.personal-gender > span { margin-right: auto; color: #657286; font-size: 9px; font-weight: 700; }
+.personal-gender button, .profile-form-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; padding: 8px 12px; border: 1px solid #d8e0ea; border-radius: 8px; color: #607086; background: #fff; font-size: 9px; font-weight: 700; cursor: pointer; }
+.personal-gender button.selected { color: #245fbf; border-color: #8ab1ee; background: #edf4ff; }
+.profile-form-actions { display: flex; gap: 8px; margin-top: 18px; }
+.profile-form-actions button.primary { color: #fff; border-color: #2f6fed; background: #2f6fed; }
+.privacy-note { display: flex; align-items: flex-start; gap: 6px; margin: 16px 0 0; color: #8591a1; font-size: 8px; line-height: 1.5; }
+.analysis-summary { display: grid; grid-template-columns: minmax(150px,.7fr) minmax(220px,1.3fr); gap: 12px; }
+.bmi-result, .sleep-target-result { min-height: 145px; padding: 18px; border: 1px solid #dce4ee; border-radius: 12px; background: #f8fafc; }
+.bmi-result { display: grid; align-content: center; text-align: center; }
+.bmi-result span { color: #6d7b8f; font-size: 9px; font-weight: 800; letter-spacing: .12em; }
+.bmi-result strong { margin: 5px 0; font-size: 38px; line-height: 1; }
+.bmi-result small { color: #6f7b8d; font-size: 8px; line-height: 1.4; }
+.bmi-result.good { color: #19734d; border-color: #a9ddc3; background: #f0faf5; }
+.bmi-result.review { color: #9a5a19; border-color: #efd0a5; background: #fff8ee; }
+.sleep-target-result { display: grid; grid-template-columns: auto 1fr; align-content: center; column-gap: 10px; }
+.sleep-target-result > .v-icon { grid-row: 1/3; color: #665cc7; }
+.sleep-target-result span { color: #727f91; font-size: 9px; }
+.sleep-target-result strong { margin-top: 3px; font-size: 20px; }
+.sleep-target-result button { grid-column: 1/-1; margin-top: 14px; padding: 7px 10px; border: 1px solid #cfd9e7; border-radius: 7px; color: #315f9e; background: #fff; font-size: 8px; font-weight: 750; cursor: pointer; }
+.sleep-target-result button:disabled { opacity: .45; cursor: default; }
+.personal-insights { display: grid; gap: 8px; margin-top: 13px; }
+.personal-insights > div { display: flex; gap: 10px; padding: 11px 12px; border: 1px solid #dfe6ee; border-radius: 9px; background: #fbfcfd; }
+.personal-insights > div.good { border-color: #b8dfca; background: #f2faf6; }
+.personal-insights > div.warning { border-color: #edd6ae; background: #fff9ef; }
+.personal-insights .v-icon { color: #5275a5; }
+.personal-insights strong { display: block; font-size: 9px; }
+.personal-insights p { margin: 3px 0 0; color: #718095; font-size: 8px; line-height: 1.5; }
 .guide-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
 .guide-card { display: grid; grid-template-columns: 42px minmax(0,1fr); align-content: start; gap: 12px; min-height: 330px; }
 .guide-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 11px; color: #2f6fed; background: #edf4ff; }
@@ -2541,8 +3370,7 @@ body.health-band-dark-theme .v-banner {
 .health-app.dark-theme .band-actions button,
 .health-app.dark-theme .journey-button,
 .health-app.dark-theme .layer-card,
-.health-app.dark-theme .guide-card > button,
-.health-app.dark-theme .presenter-actions button {
+  .health-app.dark-theme .guide-card > button {
   color: #cfdae8;
   border-color: var(--line);
   background: var(--surface);
@@ -2657,13 +3485,48 @@ body.health-band-dark-theme .v-banner {
 }
 .health-app.dark-theme .payload-panel pre { color: #c9e6ff; background: #08111b; }
 .health-app.dark-theme input { color-scheme: dark; }
+.health-app.dark-theme .inline-controls select,
+.health-app.dark-theme .inline-controls input,
+.health-app.dark-theme .wear-controls button,
+.health-app.dark-theme .gender-options button,
+.health-app.dark-theme .backup-actions button,
+.health-app.dark-theme .backup-actions label { color: #c9d4e2; border-color: #344456; background: #152131; }
+.health-app.dark-theme .wear-controls button.selected,
+.health-app.dark-theme .gender-options button.selected { color: #9bc4ff; border-color: #4a6f9f; background: #1b304a; }
+.health-app.dark-theme .wear-result,
+.health-app.dark-theme .sleep-summary,
+.health-app.dark-theme .gemini-result,
+.health-app.dark-theme .recovery-list li { color: #d6deea; border-color: #304258; background: #152131; }
+.health-app.dark-theme .report-list,
+.health-app.dark-theme .report-list > div { border-color: #304052; }
+.health-app.dark-theme .profile-save-state,
+.health-app.dark-theme .personal-form-grid input,
+.health-app.dark-theme .personal-form-grid select,
+.health-app.dark-theme .personal-gender button,
+.health-app.dark-theme .profile-form-actions button,
+.health-app.dark-theme .sleep-target-result button { color: #cbd6e4; border-color: #344456; background: #152131; }
+.health-app.dark-theme .personal-gender button.selected { color: #9bc4ff; border-color: #4a6f9f; background: #1b304a; }
+.health-app.dark-theme .profile-form-actions button.primary { color: #fff; border-color: #3f76c8; background: #315f9f; }
+.health-app.dark-theme .bmi-result,
+.health-app.dark-theme .sleep-target-result,
+.health-app.dark-theme .personal-insights > div,
+.health-app.dark-theme .sleep-flow article { color: #d7e0eb; border-color: #304052; background: #152131; }
+.health-app.dark-theme .bmi-result.good,
+.health-app.dark-theme .personal-insights > div.good { color: #7bd7aa; border-color: #315946; background: #172b23; }
+.health-app.dark-theme .bmi-result.review,
+.health-app.dark-theme .personal-insights > div.warning { color: #e7bd69; border-color: #5d4b29; background: #302719; }
 
 @media (max-width: 1050px) {
   .metric-grid { grid-template-columns: repeat(2,1fr); }
+  .sensor-grid { grid-template-columns: repeat(2,1fr); }
   .content-grid, .lower-grid { grid-template-columns: 1fr; }
-  .twin-layout, .architecture-detail, .presenter-layout { grid-template-columns: 1fr; }
+  .twin-layout, .architecture-detail { grid-template-columns: 1fr; }
   .guide-grid { grid-template-columns: 1fr; }
   .smart-hero-grid, .smart-grid { grid-template-columns: 1fr; }
+  .health-profile-grid { grid-template-columns: 1fr; }
+  .advanced-grid { grid-template-columns: 1fr; }
+  .activity-log-grid { grid-template-columns: 1fr; }
+  .gemini-panel { grid-column: auto; }
   .smart-snapshot { grid-template-columns: repeat(3,1fr); }
   .smart-snapshot > button { grid-column: 1/-1; min-height: 38px; }
   .theme-toggle { width: 36px; height: 36px; padding: 0; }
@@ -2678,6 +3541,8 @@ body.health-band-dark-theme .v-banner {
   .status-summary { grid-template-columns: auto 1fr; }
   .last-sync { grid-column: 2; padding: 0; border: 0; text-align: left; }
   .metric-grid, .scenario-grid { grid-template-columns: 1fr; }
+  .personal-form-grid, .analysis-summary { grid-template-columns: 1fr; }
+  .sensor-grid { grid-template-columns: 1fr; }
   .trend-row { grid-template-columns: 1fr; }
   .chart-legend { display: none; }
   .view-tabs { display: grid; grid-template-columns: 1fr 1fr; }
@@ -2700,7 +3565,6 @@ body.health-band-dark-theme .v-banner {
   .flow-line { display: none; }
   .layer-info-grid { grid-template-columns: 1fr; }
   .activity-row { grid-template-columns: 58px 68px minmax(0,1fr); }
-  .presenter-actions { flex-wrap: wrap; }
   .glossary-grid { grid-template-columns: 1fr; }
 }
 </style>
